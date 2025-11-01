@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <assert.h>
+#include <stdlib.h>
 
 #include <asm/byteorder.h>
 
@@ -406,6 +407,48 @@ void dump_instruction(opcode_t instr) {
     }
 }
 
+size_t file_size(FILE *f) {
+    size_t cur_p, fsize;
+    cur_p = ftell(f); fseek(f, 0L, SEEK_END);
+    fsize = ftell(f); fseek(f, cur_p, SEEK_SET);
+    return fsize;
+}
+
+// const uint64_t rounded_up = (index / align + 1) * align;
+uint64_t round_up(uint64_t size, uint64_t align) {
+    uint64_t index = size - 1; // TODO: cambiare in size - !!size
+    return (index / align + 1) * align;
+}
+
+// TODO: allineare a 2 byte la size del blocco
+// WARN: non chiamare realloc() sul blocco visto che è usato aligned_alloc()
+uint8_t * rom_map(const char *fpath, size_t *fsize, size_t *bsize) {
+
+    FILE *f;
+
+    if (!(f = fopen(fpath, "rb")))
+        return NULL;
+
+    *fsize = file_size(f);
+    *bsize = round_up(*fsize, sizeof(uint16_t));
+
+    uint8_t *memory;
+
+    if (!(memory = (uint8_t *)aligned_alloc(sizeof(uint16_t), *bsize))) {
+        fclose(f);
+        return NULL;
+    }
+
+    const size_t readed = fread(memory, sizeof(uint8_t), *fsize, f);
+
+    if (readed != *fsize) {
+        free(memory), fclose(f);
+        return NULL;
+    }
+
+    fclose(f);
+    return memory;
+}
 
 int main(int argc, char *argv[]) {
 
@@ -422,6 +465,8 @@ int main(int argc, char *argv[]) {
     //return 0;
 
     printf("argv[1] = \"%s\"\n", argv[1]);
+
+#if 0
     FILE *file = fopen(argv[1], "rb");
 
     for (opcode_t instr; fread(&instr.data, sizeof(uint16_t), 1, file) == 1; ) {
@@ -433,4 +478,15 @@ int main(int argc, char *argv[]) {
         perror("fread()");
 
     fclose(file);
+#endif
+
+    size_t file_sz, mem_sz;
+    uint8_t *rom = rom_map(argv[1], &file_sz, &mem_sz);
+    assert(rom);
+    assert( ((uintptr_t)rom) % sizeof(uint16_t) == 0);
+
+    printf("file size in bytes: %zu\n", file_sz);
+    printf("mem size in bytes: %zu\n", mem_sz);
+
+    free(rom);
 }
