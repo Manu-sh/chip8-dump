@@ -77,7 +77,10 @@ typedef union  __attribute__((__packed__)) {
 #define NNN(_INSTR_) (nibble_slice(_INSTR_, 1, 4))
 #define N(_INSTR_) (nibble_slice(_INSTR_, 3, 4))
 
-
+// TODO:
+//  0XA22A I = 0X22A
+//  ADDR = 0X22A
+//  I = be16toh( two_byte[ADDR - 0x200] )
 void dump_instruction(opcode_t instr) {
 
     static size_t instruction_counter;
