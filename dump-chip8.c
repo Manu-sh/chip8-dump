@@ -31,7 +31,7 @@ typedef union  __attribute__((__packed__)) {
 
 	struct {
         #ifdef __LITTLE_ENDIAN_BITFIELD
-            uint16_t subtype : 4;
+            uint16_t : 4;
             uint16_t : 4;
             uint16_t : 4;
             uint16_t type : 4;
@@ -39,13 +39,21 @@ typedef union  __attribute__((__packed__)) {
             uint16_t type : 4;
             uint16_t : 4;
             uint16_t : 4;
-            uint16_t subtype : 4;
+            uint16_t : 4;
         #else
             #error "ooops"
         #endif
 	};
 
 } opcode_t;
+
+
+#define X(_INSTR_) (nibble_slice(_INSTR_, 1, 2))
+#define Y(_INSTR_) (nibble_slice(_INSTR_, 2, 3))
+
+#define NN(_INSTR_) (nibble_slice(_INSTR_, 2, 4))
+#define NNN(_INSTR_) (nibble_slice(_INSTR_, 1, 4))
+#define N(_INSTR_) (nibble_slice(_INSTR_, 3, 4))
 
 
 void dump_instruction(opcode_t instr) {
@@ -67,124 +75,123 @@ void dump_instruction(opcode_t instr) {
         case 0:
             printf("%#06X call( %#03X ); - Calls machine code routine at address NNN.\n",
                instr.data,
-               nibble_slice(instr.data, 1, 4)
+               NNN(instr.data)
             );
             return;
         case 1:
             printf("%#06X goto %#03X; - Jumps to address NNN.\n",
                instr.data,
-               nibble_slice(instr.data, 1, 4)
+               NNN(instr.data)
             );
             return;
         case 2:
             printf("%#06X *(%#03X)() - Calls subroutine at NNN.\n",
                instr.data,
-               nibble_slice(instr.data, 1, 4)
+               NNN(instr.data)
             );
             return;
         case 3:
             printf("%#06X if (V%x == %#02x) - Skips the next instruction if VX equals NN (usually the next instruction is a jump to skip a code block).\n",
                instr.data,
-               nibble_slice(instr.data, 1, 2),
-               nibble_slice(instr.data, 2, 4)
+               X(instr.data),
+               NN(instr.data)
             );
             return;
         case 4:
             printf("%#06X if (V%x != %#02x) - Skips the next instruction if VX does not equal NN (usually the next instruction is a jump to skip a code block).\n",
                 instr.data,
-                nibble_slice(instr.data, 1, 2),
-                nibble_slice(instr.data, 2, 4)
+                X(instr.data),
+                NN(instr.data)
             );
             return;
         case 5:
             printf("%#06X if (V%x == V%x) - Skips the next instruction if VX does not equal NN (usually the next instruction is a jump to skip a code block).\n",
                 instr.data,
-                nibble_slice(instr.data, 1, 2),
-                nibble_slice(instr.data, 2, 3)
+                X(instr.data),
+                Y(instr.data)
             );
             return;
         case 6:
             printf("%#06X V%x = %X - Sets VX to NN.\n",
                instr.data,
-               nibble_slice(instr.data, 1, 2),
-               nibble_slice(instr.data, 2, 4)
+               X(instr.data),
+               NN(instr.data)
             );
             return;
         case 7:
             printf("%#06X V%x += %X - Adds NN to VX (carry flag is not changed).\n",
                instr.data,
-               nibble_slice(instr.data, 1, 2),
-               nibble_slice(instr.data, 2, 4)
+               X(instr.data),
+               NN(instr.data)
             );
             return;
 
         case 8:
 
             // check last nibble
-            //switch (nibble_slice(instr.data, 3, 4)) {
-            switch (instr.subtype) {
+            switch (N(instr.data)) {
                 case 0:
                     printf("%#06X V%x = V%x - Sets VX to the value of VY.\n",
                         instr.data,
-                        nibble_slice(instr.data, 1, 2),
-                        nibble_slice(instr.data, 2, 3)
+                        X(instr.data),
+                        Y(instr.data)
                     );
                     return;
                 case 1:
                     printf("%#06X V%x |= V%x - Sets VX to VX or VY. (bitwise OR operation).\n",
                         instr.data,
-                        nibble_slice(instr.data, 1, 2),
-                        nibble_slice(instr.data, 2, 3)
+                        X(instr.data),
+                        Y(instr.data)
                     );
                     return;
                 case 2:
                     printf("%#06X V%x &= V%x - Sets VX to VX and VY. (bitwise AND operation).\n",
                         instr.data,
-                        nibble_slice(instr.data, 1, 2),
-                        nibble_slice(instr.data, 2, 3)
+                        X(instr.data),
+                        Y(instr.data)
                     );
                     return;
                 case 3:
                     printf("%#06X V%x ^= V%x - Sets VX to VX xor VY.\n",
                         instr.data,
-                        nibble_slice(instr.data, 1, 2),
-                        nibble_slice(instr.data, 2, 3)
+                        X(instr.data),
+                        Y(instr.data)
                     );
                     return;
                 case 4:
                     printf("%#06X V%x += V%x - Adds VY to VX. VF is set to 1 when there's an overflow, and to 0 when there is not.\n",
                         instr.data,
-                        nibble_slice(instr.data, 1, 2),
-                        nibble_slice(instr.data, 2, 3)
+                        X(instr.data),
+                        Y(instr.data)
                     );
                     return;
                 case 5:
                     printf("%#06X V%x -= V%x - VY is subtracted from VX. VF is set to 0 when there's an underflow, and 1 when there is not. (i.e. VF set to 1 if VX >= VY and 0 if not).\n",
                         instr.data,
-                        nibble_slice(instr.data, 1, 2),
-                        nibble_slice(instr.data, 2, 3)
+                        X(instr.data),
+                        Y(instr.data)
                     );
                     return;
                 case 6:
                     printf("%#06X V%x >>= 1 - Shifts VX to the right by 1, then stores the least significant bit of VX prior to the shift into VF.\n",
                         instr.data,
-                        nibble_slice(instr.data, 1, 2)
+                        X(instr.data)
                     );
                     return;
                 case 7: {
-                    uint8_t vx = nibble_slice(instr.data, 1, 2); return;
+                    uint8_t vx = X(instr.data); return;
                      printf(
                             "%#06X V%x = V%x - V%x - Sets VX to VY minus VX. VF is set to 0 when there's an underflow, and 1 when there is not. (i.e. VF set to 1 if VY >= VX).\n",
                             instr.data,
                             vx,
-                            nibble_slice(instr.data, 2, 3), // Vy
+                            Y(instr.data), // Vy
                             vx
                     ); return;
                 }
                 case 0xE:
                     printf("%#06X V%x <<= 1 - Shifts VX to the left by 1, then sets VF to 1 if the most significant bit of VX prior to that shift was set, or to 0 if it was unset.\n",
                         instr.data,
-                        nibble_slice(instr.data, 1, 2)
+                        X(instr.data)
                     );
                     return;
 
@@ -195,53 +202,53 @@ void dump_instruction(opcode_t instr) {
         case 9:
             printf("%#06X if (V%x != V%x) - Skips the next instruction if VX does not equal VY. (Usually the next instruction is a jump to skip a code block).\n",
                 instr.data,
-                nibble_slice(instr.data, 1, 2),
-                nibble_slice(instr.data, 2, 3)
+                X(instr.data),
+                Y(instr.data)
             );
             return;
 
         case 0xA:
             printf("%#06X I = %#03X; - Sets I to the address NNN.\n",
                 instr.data,
-                nibble_slice(instr.data, 1, 4)
+                NNN(instr.data)
             );
             return;
         case 0xB:
             printf("%#06X PC = V0 + %#03X - Jumps to the address NNN plus V0.\n",
                 instr.data,
-                nibble_slice(instr.data, 1, 4)
+                NNN(instr.data)
             );
             return;
 
         case 0xC:
             printf("%#06X V%x = rand() & %#02X; - Sets VX to the result of a bitwise and operation on a random number (Typically: 0 to 255) and NN.\n",
                 instr.data,
-                nibble_slice(instr.data, 1, 2),
-                nibble_slice(instr.data, 2, 4)
+                X(instr.data),
+                NN(instr.data)
             );
             return;
 
         case 0xD:
             printf("%#06X draw(V%x, V%x, %x) - Draws a sprite at coordinate (VX, VY) that has a width of 8 pixels and a height of N pixels. Each row of 8 pixels is read as bit-coded starting from memory location I; I value does not change after the execution of this instruction. As described above, VF is set to 1 if any screen pixels are flipped from set to unset when the sprite is drawn, and to 0 if that does not happen.\n",
                 instr.data,
-                nibble_slice(instr.data, 1, 2),
-                nibble_slice(instr.data, 2, 3),
-                nibble_slice(instr.data, 3, 4)
+                X(instr.data),
+                Y(instr.data),
+                N(instr.data)
             );
             return;
 
         case 0xE:
-            switch (nibble_slice(instr.data, 2, 4)) {
+            switch (NN(instr.data)) {
                 case 0x9E:
                     printf("%#06X if (key() == V%x) - Skips the next instruction if the key stored in VX(only consider the lowest nibble) is pressed (usually the next instruction is a jump to skip a code block).\n",
                         instr.data,
-                        nibble_slice(instr.data, 1, 2)
+                        X(instr.data)
                     );
                     return;
                 case 0xA1:
                     printf("%#06X if (key() != V%x) - Skips the next instruction if the key stored in VX(only consider the lowest nibble) is not pressed (usually the next instruction is a jump to skip a code block).\n",
                         instr.data,
-                        nibble_slice(instr.data, 1, 2)
+                        X(instr.data)
                     );
                     return;
 
@@ -249,41 +256,41 @@ void dump_instruction(opcode_t instr) {
                     goto not_an_opcode;
             }
         case 0xF:
-            switch (nibble_slice(instr.data, 2, 4)) {
+            switch (NN(instr.data)) {
                 case 0x07:
                     printf("%#06X V%x = get_delay() - Sets VX to the value of the delay timer.\n",
                         instr.data,
-                        nibble_slice(instr.data, 1, 2)
+                        X(instr.data)
                     );
                     return;
                 case 0x0A:
                     printf("%#06X V%x = get_key() - A key press is awaited, and then stored in VX (blocking operation, all instruction halted until next key event, delay and sound timers should continue processing).\n",
                         instr.data,
-                        nibble_slice(instr.data, 1, 2)
+                        X(instr.data)
                     );
                     return;
                 case 0x15:
                     printf("%#06X delay_timer(V%x) - Sets the delay timer to VX.\n",
                         instr.data,
-                        nibble_slice(instr.data, 1, 2)
+                        X(instr.data)
                     );
                     return;
                 case 0x18:
                     printf("%#06X sound_timer(V%x) - Sets the sound timer to VX.\n",
                         instr.data,
-                        nibble_slice(instr.data, 1, 2)
+                        X(instr.data)
                     );
                     return;
                 case 0x1E:
                     printf("%#06X I += V%x - Adds VX to I. VF is not affected.\n",
                         instr.data,
-                        nibble_slice(instr.data, 1, 2)
+                        X(instr.data)
                     );
                     return;
                 case 0x29:
                     printf("%#06X I = sprite_addr[V%x] - Sets I to the location of the sprite for the character in VX(only consider the lowest nibble). Characters 0-F (in hexadecimal) are represented by a 4x5 font.\n",
                         instr.data,
-                        nibble_slice(instr.data, 1, 2)
+                        X(instr.data)
                     );
                     return;
                 case 0x33:
@@ -293,19 +300,19 @@ void dump_instruction(opcode_t instr) {
                         "*(I+1) = BCD(2);"
                         "*(I+2) = BCD(1); - Stores the binary-coded decimal representation of VX, with the hundreds digit in memory at location in I, the tens digit at location I+1, and the ones digit at location I+2.\n",
                         instr.data,
-                        nibble_slice(instr.data, 1, 2)
+                        X(instr.data)
                     );
                     return;
                 case 0x55:
                     printf("%#06X reg_dump(V%x, &I)  - Stores from V0 to VX (including VX) in memory, starting at address I. The offset from I is increased by 1 for each value written, but I itself is left unmodified.\n",
                         instr.data,
-                        nibble_slice(instr.data, 1, 2)
+                        X(instr.data)
                     );
                     return;
                 case 0x65:
                     printf("%#06X reg_load(V%x, &I) - Fills from V0 to VX (including VX) with values from memory, starting at address I. The offset from I is increased by 1 for each value read, but I itself is left unmodified.\n",
                         instr.data,
-                        nibble_slice(instr.data, 1, 2)
+                        X(instr.data)
                     );
                     return;
 
