@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <assert.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <asm/byteorder.h>
 
@@ -420,28 +421,31 @@ uint64_t round_up(uint64_t size, uint64_t align) {
     return (index / align + 1) * align;
 }
 
-// TODO: allineare a 2 byte la size del blocco
 // WARN: non chiamare realloc() sul blocco visto che è usato aligned_alloc()
-uint8_t * rom_map(const char *fpath, size_t *fsize, size_t *bsize) {
+uint8_t * rom_map(const char *fpath, size_t *file_sz, size_t *mem_sz) {
 
     FILE *f;
 
     if (!(f = fopen(fpath, "rb")))
         return NULL;
 
-    *fsize = file_size(f);
-    *bsize = round_up(*fsize, sizeof(uint16_t));
+    *file_sz = file_size(f);
+    *mem_sz = round_up(*file_sz, sizeof(uint16_t)); // es. if you need 133 byte you will get 132 byte, one of padding
 
     uint8_t *memory;
 
-    if (!(memory = (uint8_t *)aligned_alloc(sizeof(uint16_t), *bsize))) {
+    if (*file_sz == 0 || !(memory = (uint8_t *)aligned_alloc(sizeof(uint16_t), *mem_sz))) {
         fclose(f);
         return NULL;
     }
 
-    const size_t readed = fread(memory, sizeof(uint8_t), *fsize, f);
+    // set padding byte(s) to zero
+    if (*mem_sz > *file_sz)
+        memset(memory + *file_sz - 1, 0x00, *mem_sz - *file_sz);
 
-    if (readed != *fsize) {
+    const size_t readed = fread(memory, sizeof(uint8_t), *file_sz, f);
+
+    if (readed != *file_sz) {
         free(memory), fclose(f);
         return NULL;
     }
@@ -487,6 +491,9 @@ int main(int argc, char *argv[]) {
 
     printf("file size in bytes: %zu\n", file_sz);
     printf("mem size in bytes: %zu\n", mem_sz);
+
+
+    //
 
     free(rom);
 }
