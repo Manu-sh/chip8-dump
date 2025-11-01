@@ -150,7 +150,7 @@ void dump_instruction(opcode_t instr) {
         case 6:
             assert(X(instr.data) == instr.X);
             assert(NN(instr.data) == instr.NN);
-            printf("%#06X V%x = %X - Sets VX to NN.\n",
+            printf("%#06X V%x = %#02X - Sets VX to NN.\n",
                instr.data,
                instr.X,
                instr.NN
@@ -159,7 +159,7 @@ void dump_instruction(opcode_t instr) {
         case 7:
             assert(X(instr.data) == instr.X);
             assert(NN(instr.data) == instr.NN);
-            printf("%#06X V%x += %X - Adds NN to VX (carry flag is not changed).\n",
+            printf("%#06X V%x += %#02X - Adds NN to VX (carry flag is not changed).\n",
                instr.data,
                instr.X,
                instr.NN
@@ -470,7 +470,7 @@ int main(int argc, char *argv[]) {
 
     printf("argv[1] = \"%s\"\n", argv[1]);
 
-#if 0
+#if 1
     FILE *file = fopen(argv[1], "rb");
 
     for (opcode_t instr; fread(&instr.data, sizeof(uint16_t), 1, file) == 1; ) {
@@ -482,6 +482,7 @@ int main(int argc, char *argv[]) {
         perror("fread()");
 
     fclose(file);
+	return 0;
 #endif
 
     size_t file_sz, mem_sz;
