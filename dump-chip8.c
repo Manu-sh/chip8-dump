@@ -31,19 +31,41 @@ typedef union  __attribute__((__packed__)) {
 
 	struct {
         #ifdef __LITTLE_ENDIAN_BITFIELD
-            uint16_t : 4;
-            uint16_t : 4;
-            uint16_t : 4;
+            uint16_t N    : 4;
+            uint16_t Y    : 4;
+            uint16_t X    : 4;
             uint16_t type : 4;
         #elif defined(__BIG_ENDIAN_BITFIELD)
             uint16_t type : 4;
-            uint16_t : 4;
-            uint16_t : 4;
-            uint16_t : 4;
+            uint16_t X    : 4;
+            uint16_t Y    : 4;
+            uint16_t N    : 4;
         #else
             #error "ooops"
         #endif
 	};
+
+    struct {
+        #ifdef __LITTLE_ENDIAN_BITFIELD
+            uint16_t NNN : 12;
+            uint16_t     : 4;
+        #elif defined(__BIG_ENDIAN_BITFIELD)
+            uint16_t     : 4;
+            uint16_t NNN : 12;
+        #endif
+    };
+
+    struct {
+        #ifdef __LITTLE_ENDIAN_BITFIELD
+            uint16_t NN : 8;
+            uint16_t    : 4;
+            uint16_t    : 4;
+        #elif defined(__BIG_ENDIAN_BITFIELD)
+            uint16_t    : 4;
+            uint16_t    : 4;
+            uint16_t NN : 8;
+        #endif
+    };
 
 } opcode_t;
 
@@ -85,12 +107,15 @@ void dump_instruction(opcode_t instr) {
             );
             return;
         case 2:
+            assert(NNN(instr.data) == instr.NNN);
             printf("%#06X *(%#03X)() - Calls subroutine at NNN.\n",
                instr.data,
                NNN(instr.data)
             );
             return;
         case 3:
+            assert(X(instr.data) == instr.X);
+            assert(NN(instr.data) == instr.NN);
             printf("%#06X if (V%x == %#02x) - Skips the next instruction if VX equals NN (usually the next instruction is a jump to skip a code block).\n",
                instr.data,
                X(instr.data),
@@ -98,6 +123,8 @@ void dump_instruction(opcode_t instr) {
             );
             return;
         case 4:
+            assert(X(instr.data) == instr.X);
+            assert(NN(instr.data) == instr.NN);
             printf("%#06X if (V%x != %#02x) - Skips the next instruction if VX does not equal NN (usually the next instruction is a jump to skip a code block).\n",
                 instr.data,
                 X(instr.data),
