@@ -8,6 +8,9 @@
 
 #include <asm/byteorder.h>
 #include <bit_utility.h>
+#include <chip8.h>
+#include <font.h>
+
 
 typedef union __attribute__((__packed__)) {
 
