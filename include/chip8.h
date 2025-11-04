@@ -3,21 +3,27 @@
 #include <stdalign.h>
 #include <screen.h>
 
+#include <opcode.h>
+#include <dbg.h>
+#include <stdbool.h>
+#include <file_utility.h>
+
 enum { REG_V0, REG_V1, REG_V2, REG_V3, REG_V4, REG_V5, REG_V6, REG_V7, REG_V8, REG_V9, REG_VA, REG_VB, REG_VC, REG_VD, REG_VE, REG_VF, REG_LEN };
 
 typedef struct {
 
     /* CHIP-8 programs should be loaded into memory starting at address 0x200. The memory addresses 0x000 to 0x1FF are reserved for the CHIP-8 interpreter. */
     union {
-        alignas(uint16_t) uint8_t reserved[0x200];   // 512 byte usually untouched by the rom
-        alignas(uint16_t) uint8_t memory[0xfff + 1]; // 4096 bytes of memory
+        alignas(uint16_t) uint8_t  reserved[0x200];   // 512 byte usually untouched by the rom
+        alignas(uint16_t) uint8_t  memory[0xfff + 1]; // 4096 bytes of memory
+        //alignas(uint16_t) opcode_t instruction[4096 / sizeof(uint16_t)]; // 4096 bytes of memory
     };
 
     union {
         uint8_t d_register[REG_LEN]; // 16 data registers
+        uint8_t V[REG_LEN];
         uint8_t V0, V1, V2, V3, V4, V5, V6, V7, V8, V9, VA, VB, VC, VD, VE, VF;
     };
-
 
     union {
         uint16_t I; // address register (it can only be loaded with a 12-bit memory address due to the range of memory accessible to CHIP-8)
@@ -33,4 +39,493 @@ typedef struct {
     uint8_t delay_timer;
     uint8_t sound_timer;
 
+
+    union {
+        uint16_t PC; // program counter
+    };
+
+
+    // use(ful?) metadata
+    struct {
+        uint8_t *prog_beg; // the program start: memory + 0x200
+        uint8_t *prog_end; // TODO: questo potrebbe non essere allineato
+        uint16_t rom_size; // maximum value is 3584 bytes (the rom will be loaded at 0x200 address)
+    };
+
+
+    bool is_running;
+
 } chip8_t;
+
+
+chip8_t * chip_new() {
+
+    chip8_t *self = malloc(sizeof(chip8_t));
+    if (!self) return NULL;
+
+    memset(self->memory, 0, sizeof(self->memory));
+
+    self->rom_size = 0;
+    self->prog_beg = __builtin_assume_aligned(self->memory + 0x200, sizeof(uint16_t));
+    self->prog_end = self->prog_beg; // a default value
+    self->PC       = 0x200;
+
+    self->is_running = false;
+    return self;
+}
+
+void chip_free(chip8_t *self) {
+    free(self);
+}
+
+
+bool load_rom(chip8_t *chip, const char *fpath) {
+
+    FILE *file;
+    if (!(file = fopen(fpath, "rb"))) {
+        dbg("cannot open the path=\"%s\"\n", fpath);
+        return false;
+    }
+
+    const size_t rom_size = file_size(file);
+    if (rom_size < sizeof(uint16_t) || rom_size >= 0xfff - 0x200 + 1) { // 3584 bytes (the rom will be loaded at 0x200 address)
+        dbg("Error invalid rom size=\"%zu\"\n", rom_size);
+        fclose(file);
+        return false;
+    }
+
+    //const size_t bytes_read = fread(chip->memory + 0x200, sizeof(uint8_t), rom_size, file);
+    const size_t bytes_read = fread(chip->prog_beg, sizeof(uint8_t), rom_size, file);
+    if (bytes_read != rom_size) {
+        dbg("I/O error bytes read: \"%zu\" expected: \"%zu\" \n", bytes_read, rom_size);
+        fclose(file);
+        return false;
+    }
+
+    printf("bytes read %zu\n", bytes_read);
+    chip->rom_size = rom_size;
+    chip->prog_end = chip->prog_beg + rom_size; // set to: chip->memory + 0x200 + rom_size
+    assert(chip->prog_end <= chip->memory + 4096);
+
+    // swap the endianess
+    for (uint16_t *word = (uint16_t *)chip->prog_beg; word != (uint16_t *)chip->prog_end; ++word)
+        *word = be16toh(*word);
+
+    fclose(file);
+    return true;
+}
+
+/*
+void dump_ram(const chip8_t *chip) {
+
+    for (const uint8_t *p = chip->memory + 0x200; p != chip->memory + 0xfff + 1; ++p)
+        printf( "%s", byte_dump(p, sizeof(uint8_t)) );
+
+    puts("");
+}
+*/
+
+/*
+ reg_load(Vx, &I)
+ Fills from V0 to VX (including VX) with values from memory, starting at address I.
+
+ The offset from I is increased by 1 for each value read, but I itself is left unmodified.
+*/
+
+// TODO: test me
+void iFX65(chip8_t *chip, int reg_index) {
+
+    // TODO: controllare eventuali problemi di endianess con address
+    uint16_t address = take_few_bits16(chip->I, 12); // take 12 bit from I
+
+    printf("iFX65 endianess check: %s\n",
+           byte_dump(&address, sizeof(address))
+    );
+
+    assert(chip->d_register + reg_index + 1 <= chip->d_register + REG_LEN);
+    memcpy(chip->d_register, chip->memory + address, reg_index + 1);
+}
+
+
+// 0X00E0 disp_clear() - Clears the screen
+void i00E0(chip8_t *chip) {
+    memset(__builtin_assume_aligned(chip->screen, 32), 0x00, sizeof(chip->screen)); // In Chip-8 By default, the screen is set to all black pixels.
+    chip->PC += sizeof(opcode_t);
+}
+
+// es. 0X600C V0 = 0XC - Sets VX to NN
+void i6XNN(chip8_t *chip, opcode_t instr) {
+    chip->V[instr.X] = instr.NN;
+    chip->PC += sizeof(opcode_t);
+}
+
+// 0XA22A I = 0X22A;
+void iANNN(chip8_t *chip, opcode_t instr) {
+    chip->I = instr.NNN;
+    chip->PC += sizeof(opcode_t);
+}
+
+// 0XD01F draw(V0, V1, f)
+/*
+
+    Draws a sprite at coordinate (VX, VY) that has a width of 8 pixels and a height of N pixels.
+
+    Each row of 8 pixels is read as bit-coded starting from memory location I;
+    I value does not change after the execution of this instruction.
+
+    As described above, VF is set to 1 if any screen pixels are flipped from set to unset when the sprite is drawn, and to 0 if that does not happen.
+
+
+
+
+    CHIP-8 sprites are always eight pixels wide and between one to fifteen pixels high.
+
+
+    For sprite data, a bit set to one corresponds to a white pixel. Contrastingly, a bit set to zero corresponds to a transparent pixel.
+
+    The two registers passed to this instruction determine the x and y location of the sprite on the screen.
+
+
+    ???  If the sprite is to be visible on the screen,
+    the VX register must contain a value between 00 and 3F,
+    and the VY register must contain a value between 00 and 1F.
+
+
+
+    When this instruction is processed by the interpreter, N bytes of data are read from memory starting from the address stored in register I.
+
+    These bytes then represent the sprite data that will be used to draw the sprite on the screen.
+    Therefore, the value of the I register determines which sprite is drawn,
+
+    and should always point to the memory address where the sprite data for the desired graphic is stored.
+    The corresponding graphic on the screen will be eight pixels wide and N pixels high.
+
+
+    If the program attempts to draw a sprite at an x coordinate greater than 0x3F, the x value will be reduced modulo 64.
+    Similarly, if the program attempts to draw at a y coordinate greater than 0x1F, the y value will be reduced modulo 32.
+    Sprites that are drawn partially off-screen will be clipped.
+
+ */
+void iDXYN(chip8_t *chip, opcode_t instr) {
+
+    // TODO: qua va gestito anche l'overflow e vanno limitate le coordinate a % SC_WIDTH etc
+
+    /*
+        legge n byte consecutivi da memoria a partire da I,
+        ciascun byte rappresenta una riga di 8 pixel,
+     */
+    const uint8_t *const beg_sprite = chip->memory + chip->I;
+    const uint8_t *const end_sprite = chip->memory + chip->I + instr.N; // n bytes of memory
+
+    assert(end_sprite <= chip->memory + 4096);
+
+    const uint16_t x = chip->V[instr.X] % SCREEN_WIDTH;
+    const uint16_t y = chip->V[instr.Y] % SCREEN_HEIGHT;
+
+    // instr.N * 8 -> bit
+    long long len = end_sprite - beg_sprite;
+    long long bit_len = len * 8;
+
+    dbg("lunghezza del bitarray in bit: %lld (%lld bytes)\n", bit_len, len);
+    dbg("x: %u\n", x);
+    dbg("y: %u\n", y);
+    //exit(0);
+
+
+    for (uint16_t r = 0; r < instr.N; ++r) {
+        for (uint16_t c = 0; c < 8; ++c) {
+
+            assert(r * 8 + c < bit_len);
+            dbg("screen[%u][%u] = screen[%u] = pixel;\n",
+                x + r,
+                y + c,
+                SC(x + r, y + c)
+            );
+
+            dbg("barr[%u]", r * 8 + c);
+
+            chip->screen[SC(x + r, y + c)] ^= access_bit(beg_sprite, r * 8 + c); // TODO: disegna in XOR qua c'è il carry
+        }
+    }
+
+    // exit(0);
+
+    // Draws a sprite at coordinate (VX, VY) that has a width of 8 pixels and a height of N pixels.
+
+    // The corresponding graphic on the screen will be eight pixels wide and N pixels high.
+    /*
+    for (uint16_t r = 0; r < 8; ++r) {
+        for (uint16_t c = 0; c < instr.N; ++c) {
+
+        }
+    }
+
+    access_bit()
+    chip->screen[ SC(x, y) ];
+    */
+
+
+    chip->PC += sizeof(opcode_t);
+}
+
+// TODO: load the program
+void exec(chip8_t *chip, opcode_t instr) {
+
+    dump_instruction(instr);
+
+    if (instr.data == 0x00E0) {
+        i00E0(chip);
+        return;
+    } else if (instr.data == 0x00EE) {
+        printf("%#06X return; - Returns from a subroutine.\n", instr.data);
+        return;
+    }
+
+    switch (instr.type) {
+        case 0:
+            printf("%#06X call( %#03X ); - Calls machine code routine at address NNN.\n",
+               instr.data,
+               instr.NNN
+            );
+            return;
+        case 1:
+            printf("%#06X goto %#03X; - Jumps to address NNN.\n",
+               instr.data,
+               instr.NNN
+            );
+            return;
+        case 2:
+            printf("%#06X *(%#03X)() - Calls subroutine at NNN.\n",
+                   instr.data,
+                   instr.NNN
+            );
+            return;
+        case 3:
+            printf("%#06X if (V%x == %#02x) - Skips the next instruction if VX equals NN (usually the next instruction is a jump to skip a code block).\n",
+                   instr.data,
+                   instr.X,
+                   instr.NN
+            );
+            return;
+        case 4:
+            printf("%#06X if (V%x != %#02x) - Skips the next instruction if VX does not equal NN (usually the next instruction is a jump to skip a code block).\n",
+                   instr.data,
+                   instr.X,
+                   instr.NN
+            );
+            return;
+        case 5:
+            printf("%#06X if (V%x == V%x) - Skips the next instruction if VX does not equal NN (usually the next instruction is a jump to skip a code block).\n",
+                   instr.data,
+                   instr.X,
+                   instr.NN
+            );
+            return;
+        case 6:
+            i6XNN(chip, instr);
+            return;
+        case 7:
+            printf("%#06X V%x += %#02X - Adds NN to VX (carry flag is not changed).\n",
+                   instr.data,
+                   instr.X,
+                   instr.NN
+            );
+            return;
+
+        case 8:
+            // check last nibble
+            switch (instr.N) {
+                case 0:
+                    printf("%#06X V%x = V%x - Sets VX to the value of VY.\n",
+                           instr.data,
+                           instr.X,
+                           instr.Y
+                    );
+                    return;
+                case 1:
+                    printf("%#06X V%x |= V%x - Sets VX to VX or VY. (bitwise OR operation).\n",
+                           instr.data,
+                           instr.X,
+                           instr.Y
+                    );
+                    return;
+                case 2:
+                    printf("%#06X V%x &= V%x - Sets VX to VX and VY. (bitwise AND operation).\n",
+                           instr.data,
+                           instr.X,
+                           instr.Y
+                    );
+                    return;
+                case 3:
+                    printf("%#06X V%x ^= V%x - Sets VX to VX xor VY.\n",
+                           instr.data,
+                           instr.X,
+                           instr.Y
+                    );
+                    return;
+                case 4:
+                    printf("%#06X V%x += V%x - Adds VY to VX. VF is set to 1 when there's an overflow, and to 0 when there is not.\n",
+                           instr.data,
+                           instr.X,
+                           instr.Y
+                    );
+                    return;
+                case 5:
+                    printf("%#06X V%x -= V%x - VY is subtracted from VX. VF is set to 0 when there's an underflow, and 1 when there is not. (i.e. VF set to 1 if VX >= VY and 0 if not).\n",
+                           instr.data,
+                           instr.X,
+                           instr.Y
+                    );
+                    return;
+                case 6:
+                    printf("%#06X V%x >>= 1 - Shifts VX to the right by 1, then stores the least significant bit of VX prior to the shift into VF.\n",
+                           instr.data,
+                           X(instr.data)
+                    );
+                    return;
+                case 7: {
+                    uint8_t vx = instr.X;
+                    printf(
+                            "%#06X V%x = V%x - V%x - Sets VX to VY minus VX. VF is set to 0 when there's an underflow, and 1 when there is not. (i.e. VF set to 1 if VY >= VX).\n",
+                            instr.data,
+                            vx,
+                            instr.Y, // Vy
+                            vx
+                    ); return;
+                }
+                case 0xE:
+                    printf("%#06X V%x <<= 1 - Shifts VX to the left by 1, then sets VF to 1 if the most significant bit of VX prior to that shift was set, or to 0 if it was unset.\n",
+                           instr.data,
+                           instr.X
+                    );
+                    return;
+
+                default:
+                    goto not_an_opcode;
+            }
+
+        case 9:
+            printf("%#06X if (V%x != V%x) - Skips the next instruction if VX does not equal VY. (Usually the next instruction is a jump to skip a code block).\n",
+                   instr.data,
+                   instr.X,
+                   instr.Y
+            );
+            return;
+
+        case 0xA:
+            iANNN(chip, instr);
+            return;
+        case 0xB:
+            printf("%#06X PC = V0 + %#03X - Jumps to the address NNN plus V0.\n",
+                   instr.data,
+                   instr.NNN
+            );
+            return;
+
+        case 0xC:
+            printf("%#06X V%x = rand() & %#02X; - Sets VX to the result of a bitwise and operation on a random number (Typically: 0 to 255) and NN.\n",
+                   instr.data,
+                   instr.X,
+                   instr.NN
+            );
+            return;
+
+        case 0xD:
+            iDXYN(chip, instr);
+            return;
+
+        case 0xE:
+            switch (NN(instr.data)) {
+                case 0x9E:
+                    printf("%#06X if (key() == V%x) - Skips the next instruction if the key stored in VX(only consider the lowest nibble) is pressed (usually the next instruction is a jump to skip a code block).\n",
+                           instr.data,
+                           instr.X
+                    );
+                    return;
+                case 0xA1:
+                    printf("%#06X if (key() != V%x) - Skips the next instruction if the key stored in VX(only consider the lowest nibble) is not pressed (usually the next instruction is a jump to skip a code block).\n",
+                           instr.data,
+                           instr.X
+                    );
+                    return;
+
+                default:
+                    goto not_an_opcode;
+            }
+        case 0xF:
+            switch (instr.NN) {
+                case 0x07:
+                    printf("%#06X V%x = get_delay() - Sets VX to the value of the delay timer.\n",
+                           instr.data,
+                           instr.X
+                    );
+                    return;
+                case 0x0A:
+                    printf("%#06X V%x = get_key() - A key press is awaited, and then stored in VX (blocking operation, all instruction halted until next key event, delay and sound timers should continue processing).\n",
+                           instr.data,
+                           instr.X
+                    );
+                    return;
+                case 0x15:
+                    printf("%#06X delay_timer(V%x) - Sets the delay timer to VX.\n",
+                           instr.data,
+                           instr.X
+                    );
+                    return;
+                case 0x18:
+                    printf("%#06X sound_timer(V%x) - Sets the sound timer to VX.\n",
+                           instr.data,
+                           instr.X
+                    );
+                    return;
+                case 0x1E:
+                    printf("%#06X I += V%x - Adds VX to I. VF is not affected.\n",
+                           instr.data,
+                           instr.X
+                    );
+                    return;
+                case 0x29:
+                    printf("%#06X I = sprite_addr[V%x] - Sets I to the location of the sprite for the character in VX(only consider the lowest nibble). Characters 0-F (in hexadecimal) are represented by a 4x5 font.\n",
+                           instr.data,
+                           instr.X
+                    );
+                    return;
+                case 0x33:
+                    printf(
+                            "%#06X set_BCD(V%x) "
+                            "*(I+0) = BCD(3);"
+                            "*(I+1) = BCD(2);"
+                            "*(I+2) = BCD(1); - Stores the binary-coded decimal representation of VX, with the hundreds digit in memory at location in I, the tens digit at location I+1, and the ones digit at location I+2.\n",
+                            instr.data,
+                            instr.X
+                    );
+                    return;
+                case 0x55:
+                    printf("%#06X reg_dump(V%x, &I)  - Stores from V0 to VX (including VX) in memory, starting at address I. The offset from I is increased by 1 for each value written, but I itself is left unmodified.\n",
+                           instr.data,
+                           instr.X
+                    );
+                    return;
+                case 0x65:
+                    printf("%#06X reg_load(V%x, &I) - Fills from V0 to VX (including VX) with values from memory, starting at address I. The offset from I is increased by 1 for each value read, but I itself is left unmodified.\n",
+                           instr.data,
+                           instr.X
+                    );
+                    return;
+
+                default:
+                    goto not_an_opcode;
+            }
+
+        default:
+            not_an_opcode:
+            printf("NOT AN OPCODE: %#06X - b:%x,%x\n",
+                   instr.data, instr.byte[0], instr.byte[1]
+            );
+            //assert(0);
+            return;
+
+    }
+
+
+}

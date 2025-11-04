@@ -23,3 +23,6 @@ or sprite data, a bit set to one corresponds to a white pixel. Contrastingly, a 
 
 #define SCREEN_WIDTH  64
 #define SCREEN_HEIGHT 32
+
+// r * width + c
+#define SC(_X_,_Y_) ( _X_ * SCREEN_WIDTH + _Y_)

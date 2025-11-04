@@ -7,6 +7,9 @@
 
 #include <opcode.h>
 
+#define dbg(fmt, ...) (fprintf(stderr, "[ %s ] " fmt, __func__, ##__VA_ARGS__))
+
+
 // can handle at most 255 byte dump and is not thread safe
 const char * byte_dump(const void *data, uint8_t size) {
 
@@ -31,7 +34,7 @@ const char * byte_dump(const void *data, uint8_t size) {
 void dump_instruction(opcode_t instr) {
 
     static size_t instruction_counter;
-    assert(instr.type == nibble_slice(instr.data, 0, 1));
+    assert(instr.type == nibble_slice16(instr.data, 0, 1));
 
     printf("[%zu] ", ++instruction_counter);
 

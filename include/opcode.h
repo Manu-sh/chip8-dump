@@ -7,12 +7,12 @@
 #include <asm/byteorder.h>
 #include <bit_utility.h>
 
-#define X(_INSTR_) (nibble_slice(_INSTR_, 1, 2))
-#define Y(_INSTR_) (nibble_slice(_INSTR_, 2, 3))
+#define X(_INSTR_) (nibble_slice16(_INSTR_, 1, 2))
+#define Y(_INSTR_) (nibble_slice16(_INSTR_, 2, 3))
 
-#define NN(_INSTR_)  (nibble_slice(_INSTR_, 2, 4))
-#define NNN(_INSTR_) (nibble_slice(_INSTR_, 1, 4))
-#define N(_INSTR_)   (nibble_slice(_INSTR_, 3, 4))
+#define NN(_INSTR_)  (nibble_slice16(_INSTR_, 2, 4))
+#define NNN(_INSTR_) (nibble_slice16(_INSTR_, 1, 4))
+#define N(_INSTR_)   (nibble_slice16(_INSTR_, 3, 4))
 
 typedef union __attribute__((__packed__)) {
 
