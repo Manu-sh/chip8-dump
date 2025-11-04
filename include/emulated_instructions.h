@@ -23,3 +23,8 @@ void iFX65(chip8_t *chip, int reg_index) {
     assert(reg_index + 1 <= chip->d_register + REG_LEN);
     memcpy(chip->d_register, chip->memory + address, reg_index + 1);
 }
+
+// 0X00E0 disp_clear() - Clears the screen
+void i00E0(chip8_t *chip8) {
+
+}
