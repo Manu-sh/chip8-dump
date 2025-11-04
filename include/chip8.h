@@ -16,13 +16,14 @@ typedef struct {
     union {
         alignas(uint16_t) uint8_t  reserved[0x200];   // 512 byte usually untouched by the rom
         alignas(uint16_t) uint8_t  memory[0xfff + 1]; // 4096 bytes of memory
-        //alignas(uint16_t) opcode_t instruction[4096 / sizeof(uint16_t)]; // 4096 bytes of memory
     };
 
     union {
-        uint8_t d_register[REG_LEN]; // 16 data registers
-        uint8_t V[REG_LEN];
-        uint8_t V0, V1, V2, V3, V4, V5, V6, V7, V8, V9, VA, VB, VC, VD, VE, VF;
+        uint8_t V[REG_LEN]; // 16 data registers
+
+        struct {
+            uint8_t V0, V1, V2, V3, V4, V5, V6, V7, V8, V9, VA, VB, VC, VD, VE, VF;
+        };
     };
 
     union {
@@ -38,7 +39,6 @@ typedef struct {
 
     uint8_t delay_timer;
     uint8_t sound_timer;
-
 
     union {
         uint16_t PC; // program counter
@@ -142,8 +142,8 @@ void iFX65(chip8_t *chip, int reg_index) {
            byte_dump(&address, sizeof(address))
     );
 
-    assert(chip->d_register + reg_index + 1 <= chip->d_register + REG_LEN);
-    memcpy(chip->d_register, chip->memory + address, reg_index + 1);
+    assert(chip->V + reg_index + 1 <= chip->V + REG_LEN);
+    memcpy(chip->V, chip->memory + address, reg_index + 1);
 }
 
 
@@ -172,26 +172,18 @@ void iANNN(chip8_t *chip, opcode_t instr) {
 
     Each row of 8 pixels is read as bit-coded starting from memory location I;
     I value does not change after the execution of this instruction.
-
     As described above, VF is set to 1 if any screen pixels are flipped from set to unset when the sprite is drawn, and to 0 if that does not happen.
 
-
-
-
     CHIP-8 sprites are always eight pixels wide and between one to fifteen pixels high.
-
-
-    For sprite data, a bit set to one corresponds to a white pixel. Contrastingly, a bit set to zero corresponds to a transparent pixel.
-
-    The two registers passed to this instruction determine the x and y location of the sprite on the screen.
-
-
-    ???  If the sprite is to be visible on the screen,
+    If the sprite is to be visible on the screen,
     the VX register must contain a value between 00 and 3F,
     and the VY register must contain a value between 00 and 1F.
 
+    For sprite data, a bit set to one corresponds to a white pixel.
+    Contrastingly, a bit set to zero corresponds to a transparent pixel.
 
 
+    The two registers passed to this instruction determine the x and y location of the sprite on the screen.
     When this instruction is processed by the interpreter, N bytes of data are read from memory starting from the address stored in register I.
 
     These bytes then represent the sprite data that will be used to draw the sprite on the screen.
@@ -200,11 +192,9 @@ void iANNN(chip8_t *chip, opcode_t instr) {
     and should always point to the memory address where the sprite data for the desired graphic is stored.
     The corresponding graphic on the screen will be eight pixels wide and N pixels high.
 
-
     If the program attempts to draw a sprite at an x coordinate greater than 0x3F, the x value will be reduced modulo 64.
     Similarly, if the program attempts to draw at a y coordinate greater than 0x1F, the y value will be reduced modulo 32.
     Sprites that are drawn partially off-screen will be clipped.
-
  */
 void iDXYN(chip8_t *chip, opcode_t instr) {
 
@@ -219,20 +209,20 @@ void iDXYN(chip8_t *chip, opcode_t instr) {
 
     assert(end_sprite <= chip->memory + 4096);
 
-    //const uint16_t x = chip->V[instr.X] % SCREEN_WIDTH;
-    //const uint16_t y = chip->V[instr.Y] % SCREEN_HEIGHT;
-
-    const uint16_t x = chip->V[instr.X];
-    const uint16_t y = chip->V[instr.Y];
+    const uint16_t x = chip->V[instr.X] % SCREEN_WIDTH;  // x-offset
+    const uint16_t y = chip->V[instr.Y] % SCREEN_HEIGHT; // y-offset
 
     // instr.N * 8 -> bit
     long long len = end_sprite - beg_sprite;
     long long bit_len = len * 8;
 
+    //  Draws a sprite at coordinate (VX, VY) that has a width of 8 pixels and a height of N pixels.
     dbg("lunghezza del bitarray in bit: %lld (%lld bytes)\n", bit_len, len);
     dbg("x: %u\n", x);
     dbg("y: %u\n", y);
-    dbg("chip.I: %u\n", chip->I);
+
+    dbg("sprite-height: %u\n", instr.N);
+    dbg("sprite-width: %u\n", 8);
 
     //sleep(100);
 
@@ -242,24 +232,27 @@ void iDXYN(chip8_t *chip, opcode_t instr) {
 
     chip->VF = 0;
 
-    for (uint16_t r = 0; r < instr.N; ++r) {
-        for (uint16_t c = 0; c < 8; ++c) {
+    static const uint8_t WHITE = 0xff;
+    static const uint8_t BLACK = 0x00;
 
-            assert(r * 8 + c < bit_len);
-            static const uint8_t WHITE = 0xff;
-            static const uint8_t BLACK = 0x00;
-            uint8_t pixel = access_bit(beg_sprite, r * 8 + c) ? WHITE : BLACK;
+    for (uint8_t sprite_h = 0; sprite_h < instr.N; ++sprite_h) {
+        for (uint8_t sprite_w = 0; sprite_w < 8; ++sprite_w) {
+
+            assert(sprite_h * 8 + sprite_w < bit_len);
+            dbg("access_bit(beg_sprite, h=%d * 8 + w=%d)\n", sprite_h, sprite_w);
+            uint8_t pixel = access_bit(beg_sprite, sprite_h * 8 + sprite_w) ? WHITE : BLACK;
 
             dbg("screen[%u][%u] = screen[%u] = %u;\n",
-                x + r,
-                y + c,
-                SC(x + r, y + c),
+                y + sprite_h,
+                x + sprite_w,
+                SC(y + sprite_h, x + sprite_w),
                 pixel
             );
 
-            dbg("barr[%u]", r * 8 + c);
+            dbg("barr[%u]", sprite_h * 8 + sprite_w);
 
-            uint16_t pixel_index = SC(x + r, y + c);
+
+            uint16_t pixel_index = SC(y + sprite_h, x + sprite_w);
             uint8_t old_pixel = chip->screen[pixel_index];
 
             chip->screen[pixel_index] ^= pixel;
