@@ -219,8 +219,11 @@ void iDXYN(chip8_t *chip, opcode_t instr) {
 
     assert(end_sprite <= chip->memory + 4096);
 
-    const uint16_t x = chip->V[instr.X] % SCREEN_WIDTH;
-    const uint16_t y = chip->V[instr.Y] % SCREEN_HEIGHT;
+    //const uint16_t x = chip->V[instr.X] % SCREEN_WIDTH;
+    //const uint16_t y = chip->V[instr.Y] % SCREEN_HEIGHT;
+
+    const uint16_t x = chip->V[instr.X];
+    const uint16_t y = chip->V[instr.Y];
 
     // instr.N * 8 -> bit
     long long len = end_sprite - beg_sprite;
@@ -229,14 +232,23 @@ void iDXYN(chip8_t *chip, opcode_t instr) {
     dbg("lunghezza del bitarray in bit: %lld (%lld bytes)\n", bit_len, len);
     dbg("x: %u\n", x);
     dbg("y: %u\n", y);
-    //exit(0);
+    dbg("chip.I: %u\n", chip->I);
 
+    //sleep(100);
+
+    // Draws a sprite at coordinate (VX, VY) that has a width of 8 pixels and a height of N pixels.
+    // The corresponding graphic on the screen will be eight pixels wide and N pixels high.
+
+
+    chip->VF = 0;
 
     for (uint16_t r = 0; r < instr.N; ++r) {
         for (uint16_t c = 0; c < 8; ++c) {
 
             assert(r * 8 + c < bit_len);
-            uint8_t pixel = access_bit(beg_sprite, r * 8 + c);
+            static const uint8_t WHITE = 0xff;
+            static const uint8_t BLACK = 0x00;
+            uint8_t pixel = access_bit(beg_sprite, r * 8 + c) ? WHITE : BLACK;
 
             dbg("screen[%u][%u] = screen[%u] = %u;\n",
                 x + r,
@@ -247,30 +259,29 @@ void iDXYN(chip8_t *chip, opcode_t instr) {
 
             dbg("barr[%u]", r * 8 + c);
 
+            uint16_t pixel_index = SC(x + r, y + c);
+            uint8_t old_pixel = chip->screen[pixel_index];
 
-            chip->screen[SC(x + r, y + c)] ^= pixel ? 0xff : 0x00; // TODO: disegna in XOR qua c'è il carry
+            chip->screen[pixel_index] ^= pixel;
+
+            //chip->screen[SC(x + r, y + c)] ^= pixel ? 0xff : 0x00; // TODO: disegna in XOR qua c'è il carry
+
+            chip->VF |= old_pixel & pixel;
+            //chip->VF = chip->VF || (old_pixel == pixel);
         }
+        dbg("%c", '\n');
     }
-
-    // exit(0);
-
-    // Draws a sprite at coordinate (VX, VY) that has a width of 8 pixels and a height of N pixels.
-
-    // The corresponding graphic on the screen will be eight pixels wide and N pixels high.
-    /*
-    for (uint16_t r = 0; r < 8; ++r) {
-        for (uint16_t c = 0; c < instr.N; ++c) {
-
-        }
-    }
-
-    access_bit()
-    chip->screen[ SC(x, y) ];
-    */
-
 
     chip->PC += sizeof(opcode_t);
 }
+
+
+// es. 0X7009 V0 += 0X9 - Adds NN to VX (carry flag is not changed)
+void i7XNN(chip8_t *chip, opcode_t instr) {
+    chip->V[instr.X] += instr.NN;
+    chip->PC += sizeof(opcode_t);
+}
+
 
 // TODO: load the program
 void exec(chip8_t *chip, opcode_t instr) {
@@ -329,11 +340,7 @@ void exec(chip8_t *chip, opcode_t instr) {
             i6XNN(chip, instr);
             return;
         case 7:
-            printf("%#06X V%x += %#02X - Adds NN to VX (carry flag is not changed).\n",
-                   instr.data,
-                   instr.X,
-                   instr.NN
-            );
+            i7XNN(chip, instr);
             return;
 
         case 8:
