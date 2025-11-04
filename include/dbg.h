@@ -1,5 +1,4 @@
 #pragma once
-
 #include <stdio.h>
 #include <assert.h>
 #include <stddef.h>
@@ -24,8 +23,6 @@ const char * byte_dump(const void *data, uint8_t size) {
 
     return buffer;
 }
-
-
 
 // TODO:
 //  0XA22A I = 0X22A
