@@ -1,6 +1,7 @@
 #pragma once
 #include <raylib.h>
 #include <screen.h>
+#include <scale.h>
 
 void init_gui() {
     InitWindow(SCREEN_WIDTH * SCALE, SCREEN_HEIGHT * SCALE, "chip8 emulator");
