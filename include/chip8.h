@@ -17,11 +17,15 @@ typedef struct {
         uint8_t V0, V1, V2, V3, V4, V5, V6, V7, V8, V9, VA, VB, VC, VD, VE, VF;
     };
 
-    // forward list for the stack?
+
+    union {
+        uint16_t I; // address register (it can only be loaded with a 12-bit memory address due to the range of memory accessible to CHIP-8)
+    };
+
+    // TODO: forward list for the stack?
 
     // per la grafica probabilmente è meglio usare direttamente vector_bit[64 * 32 * 8]
     // visto che si ragiona in termini di grafica monochrome a 2 bit
-
     uint8_t delay_timer;
     uint8_t sound_timer;
 
