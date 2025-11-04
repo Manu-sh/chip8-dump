@@ -17,6 +17,7 @@
 #include <gui.h>
 #include <raylib.h>
 
+
 int main(int argc, char *argv[]) {
 
     assert(argc > 1);
@@ -62,14 +63,17 @@ int main(int argc, char *argv[]) {
 
 
 
-        /*
-        i00E0(&chip);
+
+        //i00E0(chip);
 
         // draw a line of pixel
-        memset(chip.screen + 2 * 64, 0xff, 64);
-         */
+        //memset(chip->screen + 2 * 64, 0xff, 64);
 
-        UpdateTexture(tex, chip->screen);
+
+        //UpdateTexture(tex, scale_chip_screen(chip) );
+        UpdateTexture(tex, scale_screen(chip));
+
+        // disegna la texture con scaling automatico
         DrawTexture(tex, 0, 0, WHITE);
 
         //DrawText("ciao!", 0, 0, 20, WHITE);
