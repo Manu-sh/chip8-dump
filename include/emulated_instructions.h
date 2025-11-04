@@ -30,3 +30,8 @@ void iFX65(chip8_t *chip, int reg_index) {
 void i00E0(chip8_t *chip8) {
     memset(__builtin_assume_aligned(chip8->screen, 32), 0x00, sizeof(chip8->screen)); // In Chip-8 By default, the screen is set to all black pixels.
 }
+
+// 0XA22A I = 0X22A;
+void iANNN(chip8_t *chip8) {
+
+}
