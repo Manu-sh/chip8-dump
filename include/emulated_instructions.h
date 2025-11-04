@@ -1,6 +1,7 @@
 #pragma once
 #include <chip8.h>
 #include <dbg.h>
+#include <bit_utility.h>
 #include <stdint.h>
 
 /*
