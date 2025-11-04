@@ -7,6 +7,9 @@ set(SRC_PATH  ${PROJECT_SOURCE_DIR}/src)
 
 add_executable(${PROJECT_NAME} main.c)
 
+find_package(raylib 2.0 REQUIRED)
+target_link_libraries(${PROJECT_NAME} raylib)
+
 target_include_directories(${PROJECT_NAME} PUBLIC ${INC_PATH})
 target_compile_options(${PROJECT_NAME}
 	PRIVATE

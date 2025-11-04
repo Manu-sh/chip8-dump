@@ -440,6 +440,58 @@ uint8_t * rom_map(const char *fpath, size_t *file_sz, size_t *mem_sz) {
     return memory;
 }
 
+#include <gui.h>
+#include <raylib.h>
+#include <emulated_instructions.h>
+
+int main(int argc, char *argv[]) {
+
+    assert(argc > 1);
+    printf("argv[1] = \"%s\"\n", argv[1]);
+
+    init_gui();
+
+    Texture2D tex = {
+        .id      = rlLoadTexture(NULL, GetScreenWidth(),  GetScreenHeight(), PIXELFORMAT_UNCOMPRESSED_GRAYSCALE, 1),
+        .width   = GetScreenWidth(),
+        .height  = GetScreenHeight(),
+        .format  = PIXELFORMAT_UNCOMPRESSED_GRAYSCALE,
+        .mipmaps = 1
+    };
+
+
+    chip8_t chip;
+
+    // Main game loop
+    while (!WindowShouldClose()) { // Detect window close button or ESC key
+        // Update
+        //----------------------------------------------------------------------------------
+        // TODO: Update your variables here
+        //----------------------------------------------------------------------------------
+
+        // Draw
+        BeginDrawing();
+        //ClearBackground(BLACK);
+
+
+        i00E0(&chip);
+
+        // draw a line of pixel
+        memset(chip.screen + 2 * 64, 0xff, 64);
+
+        UpdateTexture(tex, chip.screen);
+        DrawTexture(tex, 0, 0, WHITE);
+
+        //DrawText("ciao!", 0, 0, 20, WHITE);
+        EndDrawing();
+
+    }
+
+    CloseWindow(); // Close window and OpenGL context
+    return 0;
+}
+
+#if 0
 int main(int argc, char *argv[]) {
 
     assert(argc > 1);
@@ -484,3 +536,4 @@ int main(int argc, char *argv[]) {
 
     free(rom);
 }
+#endif

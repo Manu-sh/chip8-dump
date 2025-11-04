@@ -21,5 +21,5 @@ How many rows (bytes) encompass a sprite is specified through the CHIP-8 instruc
 or sprite data, a bit set to one corresponds to a white pixel. Contrastingly, a bit set to zero corresponds to a transparent pixel.
 */
 
-const uint8_t SCREEN_WIDTH  = 64; // i prefer const instead of a macro because i could need the address
-const uint8_t SCREEN_HEIGHT = 32;
+#define SCREEN_WIDTH  64
+#define SCREEN_HEIGHT 32

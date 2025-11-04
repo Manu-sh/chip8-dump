@@ -21,11 +21,12 @@ void iFX65(chip8_t *chip, int reg_index) {
         byte_dump(&address, sizeof(address))
     );
 
-    assert(reg_index + 1 <= chip->d_register + REG_LEN);
+    assert(chip->d_register + reg_index + 1 <= chip->d_register + REG_LEN);
     memcpy(chip->d_register, chip->memory + address, reg_index + 1);
 }
 
+
 // 0X00E0 disp_clear() - Clears the screen
 void i00E0(chip8_t *chip8) {
-
+    memset(__builtin_assume_aligned(chip8->screen, 32), 0x00, sizeof(chip8->screen)); // In Chip-8 By default, the screen is set to all black pixels.
 }

@@ -1,6 +1,7 @@
 #pragma once
 #include <stdint.h>
 #include <stdalign.h>
+#include <screen.h>
 
 enum { REG_V0, REG_V1, REG_V2, REG_V3, REG_V4, REG_V5, REG_V6, REG_V7, REG_V8, REG_V9, REG_VA, REG_VB, REG_VC, REG_VD, REG_VE, REG_VF, REG_LEN };
 
@@ -26,6 +27,9 @@ typedef struct {
 
     // per la grafica probabilmente è meglio usare direttamente vector_bit[64 * 32 * 8]
     // visto che si ragiona in termini di grafica monochrome a 2 bit
+
+    alignas(32) uint8_t screen[SCREEN_WIDTH * SCREEN_HEIGHT];
+
     uint8_t delay_timer;
     uint8_t sound_timer;
 
