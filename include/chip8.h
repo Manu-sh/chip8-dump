@@ -243,24 +243,25 @@ void iDXYN(chip8_t *chip, opcode_t instr) {
             uint8_t pixel = access_bit(beg_sprite, sprite_h * 8 + sprite_w) ? WHITE : BLACK;
 
             dbg("screen[%u][%u] = screen[%u] = %u;\n",
-                y + sprite_h,
-                x + sprite_w,
-                SC(y + sprite_h, x + sprite_w),
+                (y + sprite_h) % SCREEN_HEIGHT,
+                (x + sprite_w) % SCREEN_WIDTH,
+                SC( (y + sprite_h) % SCREEN_HEIGHT, (x + sprite_w) % SCREEN_WIDTH ),
                 pixel
             );
 
             dbg("barr[%u]", sprite_h * 8 + sprite_w);
 
 
-            uint16_t pixel_index = SC(y + sprite_h, x + sprite_w);
+            uint16_t pixel_index = SC( (y + sprite_h) % SCREEN_HEIGHT, (x + sprite_w) % SCREEN_WIDTH );
+
             uint8_t old_pixel = chip->screen[pixel_index];
 
             chip->screen[pixel_index] ^= pixel;
 
             //chip->screen[SC(x + r, y + c)] ^= pixel ? 0xff : 0x00; // TODO: disegna in XOR qua c'è il carry
 
-            chip->VF |= old_pixel & pixel;
-            //chip->VF = chip->VF || (old_pixel == pixel);
+            //chip->VF |= old_pixel & pixel;
+            chip->VF = chip->VF || (old_pixel == pixel);
         }
         dbg("%c", '\n');
     }
