@@ -8,6 +8,10 @@
 #include <stdbool.h>
 #include <file_utility.h>
 
+
+typedef uint16_t u16;
+#include <inlined/lifo/lifo_u16.h>
+
 enum { REG_V0, REG_V1, REG_V2, REG_V3, REG_V4, REG_V5, REG_V6, REG_V7, REG_V8, REG_V9, REG_VA, REG_VB, REG_VC, REG_VD, REG_VE, REG_VF, REG_LEN };
 
 typedef struct {
@@ -31,6 +35,7 @@ typedef struct {
     };
 
     // TODO: forward list for the stack?
+    lifo_u16 *stack;
 
     // per la grafica probabilmente è meglio usare direttamente vector_bit[64 * 32 * 8]
     // visto che si ragiona in termini di grafica monochrome a 2 bit
@@ -71,10 +76,12 @@ chip8_t * chip_new() {
     self->PC       = 0x200;
 
     self->is_running = false;
+    self->stack = lifo_u16_new();
     return self;
 }
 
 void chip_free(chip8_t *self) {
+    lifo_u16_free(self->stack);
     free(self);
 }
 
@@ -199,9 +206,9 @@ void iANNN(chip8_t *chip, opcode_t instr) {
     Similarly, if the program attempts to draw at a y coordinate greater than 0x1F, the y value will be reduced modulo 32.
 
     Sprites that are drawn partially off-screen will be clipped.
-
-    TODO: siccome ho lo stesso identico problema con la funzione copiata significa che ho un problema nel caricamento della rom in memoria
  */
+
+// TODO: più check buffer overflow in particolare il bound sul chip->I e sugli altri data register
 void iDXYN(chip8_t *chip, opcode_t instr) {
 
     // legge n byte consecutivi da memoria a partire da I, ciascun byte rappresenta una riga di 8 pixel.
@@ -241,7 +248,7 @@ void iDXYN(chip8_t *chip, opcode_t instr) {
 
             uint8_t pixel_tmp = chip->screen[pixel_index];
             chip->screen[pixel_index] ^= pixel;
-            chip->VF |= pixel_tmp & pixel; // TODO: disegna in XOR qua c'è il carry chip->VF = chip->VF || (old_pixel == pixel);
+            chip->VF |= pixel_tmp & pixel; // disegna in XOR qua c'è il carry chip->VF = chip->VF || (old_pixel == pixel); spenge il pixel se entrambi sono on
         }
 
         printf("%c", '\n');
@@ -251,6 +258,27 @@ void iDXYN(chip8_t *chip, opcode_t instr) {
 // es. 0X7009 V0 += 0X9 - Adds NN to VX (carry flag is not changed)
 void i7XNN(chip8_t *chip, opcode_t instr) {
     chip->V[instr.X] += instr.NN;
+}
+
+//  es. 0X1228 goto 0X228; - Jumps to address NNN.
+void i1NNN(chip8_t *chip, opcode_t instr) {
+    chip->PC = instr.NNN;
+}
+
+// es.  0X2812 *(0X812)() - Calls subroutine at NNN.
+void i2NNN(chip8_t *chip, opcode_t instr) {
+
+    // 0x2NNN: Call subroutine at NNN
+    // Store current address to return to on subroutine stack ("push" it on the stack)
+    //   and set program counter to subroutine address so that the next opcode
+    //   is gotten from there.
+
+    lifo_u16_push(chip->stack, chip->PC);
+    chip->PC = instr.NNN;
+
+    //puts( byte_dump(chip->memory + chip->PC, sizeof(opcode_t)) );
+    //dbg("pc=%d\n", chip->PC);
+    //exit(0);
 }
 
 
@@ -276,16 +304,12 @@ void exec(chip8_t *chip, opcode_t instr) {
             );
             return;
         case 1:
-            printf("%#06X goto %#03X; - Jumps to address NNN.\n",
-               instr.data,
-               instr.NNN
-            );
+            i1NNN(chip, instr);
+            //chip->PC += sizeof(opcode_t); it's a jump, do not move the PC
             return;
         case 2:
-            printf("%#06X *(%#03X)() - Calls subroutine at NNN.\n",
-                   instr.data,
-                   instr.NNN
-            );
+            i2NNN(chip, instr);
+            //chip->PC += sizeof(opcode_t); //it's a call-jump, do not move the PC
             return;
         case 3:
             printf("%#06X if (V%x == %#02x) - Skips the next instruction if VX equals NN (usually the next instruction is a jump to skip a code block).\n",
