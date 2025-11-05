@@ -57,9 +57,9 @@ int main(int argc, char *argv[]) {
 
 
 //exec(chip, *(opcode_t *)(chip->memory + chip->PC));
-        opcode_t *i = (opcode_t *)(chip->memory + (chip->PC) );
-        i->data = be16toh(i->data);
-        exec(chip, *i);
+        opcode_t i = *(opcode_t *)(chip->memory + chip->PC);
+        i.data = be16toh(i.data);
+        exec(chip, i);
 
         // Draw
         BeginDrawing();

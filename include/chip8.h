@@ -278,7 +278,10 @@ void i2NNN(chip8_t *chip, opcode_t instr) {
 
     //puts( byte_dump(chip->memory + chip->PC, sizeof(opcode_t)) );
     //dbg("pc=%d\n", chip->PC);
-    //exit(0);
+    dbg("pc=%u\n", instr.NNN);
+    dbg("pc=%u\n", chip->PC);
+    dbg("end_prog=%p pc_addr=%p\n", chip->prog_end, chip->memory + chip->PC);
+    exit(0);
 }
 
 
