@@ -107,9 +107,11 @@ bool load_rom(chip8_t *chip, const char *fpath) {
     chip->prog_end = chip->prog_beg + rom_size; // set to: chip->memory + 0x200 + rom_size
     assert(chip->prog_end <= chip->memory + 4096);
 
-    // swap the endianess
-    for (uint16_t *word = (uint16_t *)chip->prog_beg; word != (uint16_t *)chip->prog_end; ++word)
-        *word = be16toh(*word);
+#if 0
+    // !! DO-NOT: swap the rom endianess! since contain raw bytes like sprites etc
+    //for (uint16_t *word = (uint16_t *)chip->prog_beg; word != (uint16_t *)chip->prog_end; ++word)
+    //    *word = be16toh(*word);
+#endif
 
     fclose(file);
     return true;
@@ -133,36 +135,34 @@ void dump_ram(const chip8_t *chip) {
 */
 
 // TODO: test me
+/*
 void iFX65(chip8_t *chip, int reg_index) {
 
     // TODO: controllare eventuali problemi di endianess con address
     uint16_t address = take_few_bits16(chip->I, 12); // take 12 bit from I
 
     printf("iFX65 endianess check: %s\n",
-           byte_dump(&address, sizeof(address))
+       byte_dump(&address, sizeof(address))
     );
 
     assert(chip->V + reg_index + 1 <= chip->V + REG_LEN);
     memcpy(chip->V, chip->memory + address, reg_index + 1);
 }
-
+*/
 
 // 0X00E0 disp_clear() - Clears the screen
 void i00E0(chip8_t *chip) {
     memset(__builtin_assume_aligned(chip->screen, 32), 0x00, sizeof(chip->screen)); // In Chip-8 By default, the screen is set to all black pixels.
-    chip->PC += sizeof(opcode_t);
 }
 
 // es. 0X600C V0 = 0XC - Sets VX to NN
 void i6XNN(chip8_t *chip, opcode_t instr) {
     chip->V[instr.X] = instr.NN;
-    chip->PC += sizeof(opcode_t);
 }
 
 // 0XA22A I = 0X22A;
 void iANNN(chip8_t *chip, opcode_t instr) {
     chip->I = instr.NNN;
-    chip->PC += sizeof(opcode_t);
 }
 
 // 0XD01F draw(V0, V1, f)
@@ -176,104 +176,81 @@ void iANNN(chip8_t *chip, opcode_t instr) {
 
     CHIP-8 sprites are always eight pixels wide and between one to fifteen pixels high.
     If the sprite is to be visible on the screen,
-    the VX register must contain a value between 00 and 3F,
-    and the VY register must contain a value between 00 and 1F.
+    the VX register must contain a value between 00 and 3F (63: width index),
+    and the VY register must contain a value between 00 and 1F (31: height index).
 
     For sprite data, a bit set to one corresponds to a white pixel.
-    Contrastingly, a bit set to zero corresponds to a transparent pixel.
+    Contrastingly, a bit set to zero corresponds to a transparent pixel. (it's leave untouched)
 
 
     The two registers passed to this instruction determine the x and y location of the sprite on the screen.
-    When this instruction is processed by the interpreter, N bytes of data are read from memory starting from the address stored in register I.
 
+
+    When this instruction is processed by the interpreter, N bytes of data are read from memory starting from the address stored in register I.
     These bytes then represent the sprite data that will be used to draw the sprite on the screen.
-    Therefore, the value of the I register determines which sprite is drawn,
+    Therefore, the value of the I register determines which sprite is drawn
 
     and should always point to the memory address where the sprite data for the desired graphic is stored.
+
+
     The corresponding graphic on the screen will be eight pixels wide and N pixels high.
 
     If the program attempts to draw a sprite at an x coordinate greater than 0x3F, the x value will be reduced modulo 64.
     Similarly, if the program attempts to draw at a y coordinate greater than 0x1F, the y value will be reduced modulo 32.
+
     Sprites that are drawn partially off-screen will be clipped.
+
+    TODO: siccome ho lo stesso identico problema con la funzione copiata significa che ho un problema nel caricamento della rom in memoria
  */
 void iDXYN(chip8_t *chip, opcode_t instr) {
 
-    // TODO: qua va gestito anche l'overflow e vanno limitate le coordinate a % SC_WIDTH etc
-
-    /*
-        legge n byte consecutivi da memoria a partire da I,
-        ciascun byte rappresenta una riga di 8 pixel,
-     */
+    // legge n byte consecutivi da memoria a partire da I, ciascun byte rappresenta una riga di 8 pixel.
     const uint8_t *const beg_sprite = chip->memory + chip->I;
     const uint8_t *const end_sprite = chip->memory + chip->I + instr.N; // n bytes of memory
-
     assert(end_sprite <= chip->memory + 4096);
 
-    const uint16_t x = chip->V[instr.X] % SCREEN_WIDTH;  // x-offset
-    const uint16_t y = chip->V[instr.Y] % SCREEN_HEIGHT; // y-offset
+    // The two registers passed to this instruction determine the x and y location of the sprite on the screen.
+    const uint16_t x = chip->V[instr.X]; // x-offset (col_offset)
+    const uint16_t y = chip->V[instr.Y]; // y-offset (row_offset)
 
     // instr.N * 8 -> bit
-    long long len = end_sprite - beg_sprite;
-    long long bit_len = len * 8;
-
-    //  Draws a sprite at coordinate (VX, VY) that has a width of 8 pixels and a height of N pixels.
-    dbg("lunghezza del bitarray in bit: %lld (%lld bytes)\n", bit_len, len);
-    dbg("x: %u\n", x);
-    dbg("y: %u\n", y);
-
-    dbg("sprite-height: %u\n", instr.N);
-    dbg("sprite-width: %u\n", 8);
-
-    //sleep(100);
+    const uint8_t sprite_len        = end_sprite - beg_sprite;
+    const uint8_t sprite_bit_len    = sprite_len * 8;
+    const uint8_t sprite_bit_height = instr.N; // in bits
+    const uint8_t sprite_bit_width  = 8;       // in bits
 
     // Draws a sprite at coordinate (VX, VY) that has a width of 8 pixels and a height of N pixels.
     // The corresponding graphic on the screen will be eight pixels wide and N pixels high.
 
-
     chip->VF = 0;
 
-    static const uint8_t WHITE = 0xff;
-    static const uint8_t BLACK = 0x00;
+    // The corresponding graphic on the screen will be eight pixels wide and N pixels high.
+    for (uint8_t sprite_h = 0; sprite_h < sprite_bit_height; ++sprite_h) {
+        for (uint8_t sprite_w = 0; sprite_w < sprite_bit_width; ++sprite_w) {
 
-    for (uint8_t sprite_h = 0; sprite_h < instr.N; ++sprite_h) {
-        for (uint8_t sprite_w = 0; sprite_w < 8; ++sprite_w) {
+            uint8_t sprite_bit_idx = sprite_h * sprite_bit_width + sprite_w; // a bit matrix in row-major-order
+            uint8_t pixel = access_bit(beg_sprite, sprite_bit_idx) ? 0xff : 0x00;
 
-            assert(sprite_h * 8 + sprite_w < bit_len);
-            dbg("access_bit(beg_sprite, h=%d * 8 + w=%d)\n", sprite_h, sprite_w);
-            uint8_t pixel = access_bit(beg_sprite, sprite_h * 8 + sprite_w) ? WHITE : BLACK;
+            printf("%d ", pixel ? 1 : 0);
 
-            dbg("screen[%u][%u] = screen[%u] = %u;\n",
-                (y + sprite_h) % SCREEN_HEIGHT,
-                (x + sprite_w) % SCREEN_WIDTH,
-                SC( (y + sprite_h) % SCREEN_HEIGHT, (x + sprite_w) % SCREEN_WIDTH ),
-                pixel
+            // questo fa il wrap around, tecnicamente è una roba di super-chip in chip8 originale viene clippato e basta se esce dallo schermo.
+            uint16_t pixel_index = SC(
+        (y + sprite_h) % SCREEN_HEIGHT,
+        (x + sprite_w) % SCREEN_WIDTH
             );
 
-            dbg("barr[%u]", sprite_h * 8 + sprite_w);
-
-
-            uint16_t pixel_index = SC( (y + sprite_h) % SCREEN_HEIGHT, (x + sprite_w) % SCREEN_WIDTH );
-
-            uint8_t old_pixel = chip->screen[pixel_index];
-
+            uint8_t pixel_tmp = chip->screen[pixel_index];
             chip->screen[pixel_index] ^= pixel;
-
-            //chip->screen[SC(x + r, y + c)] ^= pixel ? 0xff : 0x00; // TODO: disegna in XOR qua c'è il carry
-
-            //chip->VF |= old_pixel & pixel;
-            chip->VF = chip->VF || (old_pixel == pixel);
+            chip->VF |= pixel_tmp & pixel; // TODO: disegna in XOR qua c'è il carry chip->VF = chip->VF || (old_pixel == pixel);
         }
-        dbg("%c", '\n');
+
+        printf("%c", '\n');
     }
-
-    chip->PC += sizeof(opcode_t);
 }
-
 
 // es. 0X7009 V0 += 0X9 - Adds NN to VX (carry flag is not changed)
 void i7XNN(chip8_t *chip, opcode_t instr) {
     chip->V[instr.X] += instr.NN;
-    chip->PC += sizeof(opcode_t);
 }
 
 
@@ -284,6 +261,7 @@ void exec(chip8_t *chip, opcode_t instr) {
 
     if (instr.data == 0x00E0) {
         i00E0(chip);
+        chip->PC += sizeof(opcode_t);
         return;
     } else if (instr.data == 0x00EE) {
         printf("%#06X return; - Returns from a subroutine.\n", instr.data);
@@ -332,9 +310,11 @@ void exec(chip8_t *chip, opcode_t instr) {
             return;
         case 6:
             i6XNN(chip, instr);
+            chip->PC += sizeof(opcode_t);
             return;
         case 7:
             i7XNN(chip, instr);
+            chip->PC += sizeof(opcode_t);
             return;
 
         case 8:
@@ -419,6 +399,7 @@ void exec(chip8_t *chip, opcode_t instr) {
 
         case 0xA:
             iANNN(chip, instr);
+            chip->PC += sizeof(opcode_t);
             return;
         case 0xB:
             printf("%#06X PC = V0 + %#03X - Jumps to the address NNN plus V0.\n",
@@ -437,6 +418,7 @@ void exec(chip8_t *chip, opcode_t instr) {
 
         case 0xD:
             iDXYN(chip, instr);
+            chip->PC += sizeof(opcode_t);
             return;
 
         case 0xE:
