@@ -55,11 +55,7 @@ int main(int argc, char *argv[]) {
         // TODO: Update your variables here
         //----------------------------------------------------------------------------------
 
-
-//exec(chip, *(opcode_t *)(chip->memory + chip->PC));
-        opcode_t i = *(opcode_t *)(chip->memory + chip->PC);
-        i.data = be16toh(i.data);
-        exec(chip, i);
+        chip_exec(chip, chip_fetch(chip, chip->PC));
 
         // Draw
         BeginDrawing();

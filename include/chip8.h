@@ -284,9 +284,15 @@ void i2NNN(chip8_t *chip, opcode_t instr) {
     exit(0);
 }
 
+opcode_t chip_fetch(const chip8_t *chip, uint16_t chip_addr) {
+    assert(chip_addr < 4096); // usually chip_addr is the program counter
+    opcode_t i = *(const opcode_t *)(chip->memory + chip_addr);
+    return i.data = be16toh(i.data), i;
+}
+
 
 // TODO: load the program
-void exec(chip8_t *chip, opcode_t instr) {
+void chip_exec(chip8_t *chip, opcode_t instr) {
 
     dump_instruction(instr);
 
