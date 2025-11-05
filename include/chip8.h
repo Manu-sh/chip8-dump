@@ -285,7 +285,7 @@ void i2NNN(chip8_t *chip, opcode_t instr) {
 }
 
 opcode_t chip_fetch(const chip8_t *chip, uint16_t chip_addr) {
-    assert(chip_addr < 4096); // usually chip_addr is the program counter
+    assert(chip_addr <= (4096 - sizeof(uint16_t))); // usually chip_addr is the program counter
     return (opcode_t) {
         .data = be16toh( *((uint16_t *)(chip->memory + chip_addr)) )
     };
