@@ -17,6 +17,32 @@ typedef uint16_t u16;
 
 enum { REG_V0, REG_V1, REG_V2, REG_V3, REG_V4, REG_V5, REG_V6, REG_V7, REG_V8, REG_V9, REG_VA, REG_VB, REG_VC, REG_VD, REG_VE, REG_VF, REG_LEN };
 
+/*
+ Input is done with a hex keyboard that has 16 keys ranging 0 to F.
+ The "8", "4", "6", and "2" keys are typically used for directional input.
+*/
+
+enum {
+    KEY_0,
+    KEY_1,
+    KEY_2,
+    KEY_3,
+    KEY_4,
+    KEY_5,
+    KEY_6,
+    KEY_7,
+    KEY_8,
+    KEY_9,
+    KEY_10,
+    KEY_11,
+    KEY_12,
+    KEY_13,
+    KEY_14,
+    KEY_15, // 0xf
+
+    KEY_LEN
+};
+
 typedef struct {
 
     /* CHIP-8 programs should be loaded into memory starting at address 0x200. The memory addresses 0x000 to 0x1FF are reserved for the CHIP-8 interpreter. */
@@ -33,8 +59,10 @@ typedef struct {
         };
     };
 
+    // 2**12 -> 4096 possible values from 0 to 2**12-1
     union {
-        uint16_t I; // address register (it can only be loaded with a 12-bit memory address due to the range of memory accessible to CHIP-8)
+        uint16_t I : 12; // address register (it can only be loaded with a 12-bit memory address due to the range of memory accessible to CHIP-8)
+        uint16_t   : 4;
     };
 
     // TODO: forward list for the stack?
@@ -147,29 +175,6 @@ void dump_ram(const chip8_t *chip) {
         printf( "%s", byte_dump(p, sizeof(uint8_t)) );
 
     puts("");
-}
-*/
-
-/*
- reg_load(Vx, &I)
- Fills from V0 to VX (including VX) with values from memory, starting at address I.
-
- The offset from I is increased by 1 for each value read, but I itself is left unmodified.
-*/
-
-// TODO: test me
-/*
-void iFX65(chip8_t *chip, int reg_index) {
-
-    // TODO: controllare eventuali problemi di endianess con address
-    uint16_t address = take_few_bits16(chip->I, 12); // take 12 bit from I
-
-    printf("iFX65 endianess check: %s\n",
-       byte_dump(&address, sizeof(address))
-    );
-
-    assert(chip->V + reg_index + 1 <= chip->V + REG_LEN);
-    memcpy(chip->V, chip->memory + address, reg_index + 1);
 }
 */
 
@@ -325,20 +330,16 @@ void i2NNN(chip8_t *chip, opcode_t instr) {
 
     //puts( byte_dump(chip->memory + chip->PC, sizeof(opcode_t)) );
     //dbg("pc=%d\n", chip->PC);
-    dbg("pc=%u\n", instr.NNN);
-    dbg("pc=%u\n", chip->PC);
-    dbg("end_prog=%p pc_addr=%p\n", chip->prog_end, chip->memory + chip->PC);
-    //exit(0);
+    //dbg("pc=%u\n", instr.NNN);
+    //dbg("pc=%u\n", chip->PC);
+    //dbg("end_prog=%p pc_addr=%p\n", chip->prog_end, chip->memory + chip->PC);
 }
-
 
 // 0X00EE return; - Returns from a subroutine.
 void i00EE(chip8_t *chip) {
     assert( !lifo_u16_isEmpty(chip->stack) );
-    //chip->PC = lifo_u16_pop(chip->stack) + sizeof(opcode_t);
     chip->PC = lifo_u16_pop(chip->stack);
 }
-
 
 // es. 0X8750 V7 = V5 - Sets VX to the value of VY.
 void i8XY0(chip8_t *chip, opcode_t instr) {
@@ -470,8 +471,6 @@ void iFX18(chip8_t *chip, opcode_t instr) {
     chip->sound_timer = chip->V[instr.X];
 }
 
-// TODO: vedere se è possibile usare meno bit per chip->I (12 bit)
-
 // I += V%x - Adds VX to I. VF is not affected.
 void iFX1E(chip8_t *chip, opcode_t instr) {
     chip->I += chip->V[instr.X];
@@ -486,7 +485,6 @@ opcode_t chip_fetch(const chip8_t *chip, uint16_t chip_addr) {
 }
 
 
-// TODO: load the program
 void chip_exec(chip8_t *chip, opcode_t instr) {
 
     dump_instruction(instr);
@@ -510,12 +508,10 @@ void chip_exec(chip8_t *chip, opcode_t instr) {
             assert(0);
             return;
         case 1:
-            i1NNN(chip, instr);
-            //chip->PC += sizeof(opcode_t); it's a jump, do not move the PC
+            i1NNN(chip, instr); // it's a jump, do not move the PC
             return;
         case 2:
-            i2NNN(chip, instr);
-            //chip->PC += sizeof(opcode_t); //it's a call-jump, do not move the PC
+            i2NNN(chip, instr); // it's a call-jump, do not move the PC
             return;
         case 3:
             i3XNN(chip, instr);
@@ -605,14 +601,14 @@ void chip_exec(chip8_t *chip, opcode_t instr) {
             switch (NN(instr.data)) {
                 case 0x9E:
                     printf("%#06X if (key() == V%x) - Skips the next instruction if the key stored in VX(only consider the lowest nibble) is pressed (usually the next instruction is a jump to skip a code block).\n",
-                           instr.data,
-                           instr.X
+                       instr.data,
+                       instr.X
                     );
                     return;
                 case 0xA1:
                     printf("%#06X if (key() != V%x) - Skips the next instruction if the key stored in VX(only consider the lowest nibble) is not pressed (usually the next instruction is a jump to skip a code block).\n",
-                           instr.data,
-                           instr.X
+                       instr.data,
+                       instr.X
                     );
                     return;
 
@@ -627,8 +623,8 @@ void chip_exec(chip8_t *chip, opcode_t instr) {
                     return;
                 case 0x0A:
                     printf("%#06X V%x = get_key() - A key press is awaited, and then stored in VX (blocking operation, all instruction halted until next key event, delay and sound timers should continue processing).\n",
-                           instr.data,
-                           instr.X
+                       instr.data,
+                       instr.X
                     );
                     assert(0);
                     return;
@@ -668,7 +664,7 @@ void chip_exec(chip8_t *chip, opcode_t instr) {
         default:
             not_an_opcode:
             printf("NOT AN OPCODE: %#06X - b:%x,%x\n",
-                   instr.data, instr.byte[0], instr.byte[1]
+               instr.data, instr.byte[0], instr.byte[1]
             );
             //assert(0);
             return;
