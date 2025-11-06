@@ -73,4 +73,3 @@ static FORCED(inline) bool access_bit(const uint8_t *const restrict v, uint64_t 
     const uint64_t byte_idx = bit_index >> 3; // (i/8)
     return (v[byte_idx] >> (7 - (bit_index&7))) & 1; // i&7 -> i%8
 }
-

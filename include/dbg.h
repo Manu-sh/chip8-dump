@@ -86,10 +86,10 @@ void dump_instruction(opcode_t instr) {
         case 5:
             assert(X(instr.data) == instr.X);
             assert(Y(instr.data) == instr.Y);
-            printf("%#06X if (V%x == V%x) - Skips the next instruction if VX does not equal NN (usually the next instruction is a jump to skip a code block).\n",
+            printf("%#06X if (V%x == V%x) - Skips the next instruction if VX equals VY (usually the next instruction is a jump to skip a code block).\n",
                    instr.data,
                    instr.X,
-                   instr.NN
+                   instr.Y
             );
             return;
         case 6:

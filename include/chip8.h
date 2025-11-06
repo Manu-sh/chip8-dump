@@ -6,6 +6,8 @@
 #include <opcode.h>
 #include <dbg.h>
 #include <stdbool.h>
+#include <string.h>
+#include <assert.h>
 #include <file_utility.h>
 
 
@@ -69,6 +71,7 @@ chip8_t * chip_new() {
     if (!self) return NULL;
 
     memset(self->memory, 0, sizeof(self->memory));
+    memset(self->screen, 0, sizeof(self->screen)); // clear the screen
 
     self->rom_size = 0;
     self->prog_beg = __builtin_assume_aligned(self->memory + 0x200, sizeof(uint16_t));
@@ -77,6 +80,7 @@ chip8_t * chip_new() {
 
     self->is_running = false;
     self->stack = lifo_u16_new();
+
     return self;
 }
 
@@ -265,6 +269,26 @@ void i1NNN(chip8_t *chip, opcode_t instr) {
     chip->PC = instr.NNN;
 }
 
+// es. 0X362B if (V6 == 0x2b) - Skips the next instruction if VX equals NN (usually the next instruction is a jump to skip a code block).
+void i3XNN(chip8_t *chip, opcode_t instr) {
+    chip->PC += (chip->V[instr.X] == instr.NN) << 1; // same of: (chip->V[instr.X] == instr.NN) ? sizeof(opcode_t) : 0
+}
+
+// es. 0X452A if (V5 != 0x2a) - Skips the next instruction if VX does not equal NN (usually the next instruction is a jump to skip a code block).
+void i4XNN(chip8_t *chip, opcode_t instr) {
+    chip->PC += (chip->V[instr.X] != instr.NN) << 1;
+}
+
+// .. - Skips the next instruction if VX equals VY (usually the next instruction is a jump to skip a code block).
+void i5XY0(chip8_t *chip, opcode_t instr) {
+    chip->PC += (chip->V[instr.X] == chip->V[instr.Y]) << 1;
+}
+
+// es. 0X9560 if (V5 != V6) - Skips the next instruction if VX does not equal VY. (Usually the next instruction is a jump to skip a code block).
+void i9XY0(chip8_t *chip, opcode_t instr) {
+    chip->PC += (chip->V[instr.X] != chip->V[instr.Y]) << 1;
+}
+
 // es.  0X2812 *(0X812)() - Calls subroutine at NNN.
 void i2NNN(chip8_t *chip, opcode_t instr) {
 
@@ -281,8 +305,107 @@ void i2NNN(chip8_t *chip, opcode_t instr) {
     dbg("pc=%u\n", instr.NNN);
     dbg("pc=%u\n", chip->PC);
     dbg("end_prog=%p pc_addr=%p\n", chip->prog_end, chip->memory + chip->PC);
-    exit(0);
+    //exit(0);
 }
+
+
+// 0X00EE return; - Returns from a subroutine.
+void i00EE(chip8_t *chip) {
+    assert( !lifo_u16_isEmpty(chip->stack) );
+    //chip->PC = lifo_u16_pop(chip->stack) + sizeof(opcode_t);
+    chip->PC = lifo_u16_pop(chip->stack);
+}
+
+
+// es. 0X8750 V7 = V5 - Sets VX to the value of VY.
+void i8XY0(chip8_t *chip, opcode_t instr) {
+    chip->V[instr.X] = chip->V[instr.Y];
+}
+
+// es. 0X87B1 V7 |= Vb - Sets VX to VX or VY. (bitwise OR operation).
+void i8XY1(chip8_t *chip, opcode_t instr) {
+    chip->V[instr.X] |= chip->V[instr.Y];
+}
+
+// es. 0X87B2 V7 &= Vb - Sets VX to VX and VY. (bitwise AND operation).
+void i8XY2(chip8_t *chip, opcode_t instr) {
+    chip->V[instr.X] &= chip->V[instr.Y];
+}
+
+// es. 0X87B3 V7 ^= Vb - Sets VX to VX xor VY.
+void i8XY3(chip8_t *chip, opcode_t instr) {
+    chip->V[instr.X] ^= chip->V[instr.Y];
+}
+
+// es. 0X8764 V7 += V6 - Adds VY to VX. VF is set to 1 when there's an overflow, and to 0 when there is not.
+void i8XY4(chip8_t *chip, opcode_t instr) {
+
+    // dopotutto perché... perché non dovrei?! **rigira avidamente l'anello tra le mani**
+    chip->VF = !!(__builtin_add_overflow(
+        chip->V[instr.X],
+        chip->V[instr.Y],
+        chip->V + instr.X
+    ));
+}
+
+// es. 0X8765 V7 -= V6 - VY is subtracted from VX. VF is set to 0 when there's an underflow, and 1 when there is not. (i.e. VF set to 1 if VX >= VY and 0 if not).
+void i8XY5(chip8_t *chip, opcode_t instr) {
+
+    chip->VF = !!(__builtin_sub_overflow(
+        chip->V[instr.X],
+        chip->V[instr.Y],
+        chip->V + instr.X
+    ));
+}
+
+// Vx = Vy - Vx Sets VX to VY minus VX. VF is set to 0 when there's an underflow, and 1 when there is not. (i.e. VF set to 1 if VY >= VX).
+void i8XY7(chip8_t *chip, opcode_t instr) {
+
+    chip->VF = !!(__builtin_sub_overflow(
+        chip->V[instr.Y],
+        chip->V[instr.X],
+        chip->V + instr.X
+    ));
+}
+
+// es. 0X866E V6 <<= 1 - Shifts VX to the left by 1, then sets VF to 1 if the most significant bit of VX prior to that shift was set, or to 0 if it was unset.
+void i8XYE(chip8_t *chip, opcode_t instr) {
+    chip->VF = access_bit(chip->V + instr.X, 0); // take the msb
+    chip->V[instr.X] <<= 1;
+}
+
+// es. 0X8666 V6 >>= 1 - Shifts VX to the right by 1, then stores the least significant bit of VX prior to the shift into VF.
+void i8XY6(chip8_t *chip, opcode_t instr) {
+    chip->VF = access_bit(chip->V + instr.X, sizeof(uint8_t) - 1); // take the lsb
+    chip->V[instr.X] >>= 1;
+}
+
+// es.  0XF155 reg_dump(V1, &I)  - Stores from V0 to VX (including VX) in memory,
+// starting at address I. The offset from I is increased by 1 for each value written,
+// but I itself is left unmodified.
+void iFX55(chip8_t *chip, opcode_t instr) {
+
+    const size_t sz = instr.X + 1;
+    assert(chip->I + sz <= 4096);
+
+    memcpy(chip->memory + chip->I, chip->V, sz);
+}
+
+// es. 0XF065 reg_load(V0, &I) - Fills from V0 to VX (including VX) with values from memory,
+// starting at address I. The offset from I is increased by 1 for each value read,
+// but I itself is left unmodified.
+void iFX65(chip8_t *chip, opcode_t instr) {
+
+    const size_t sz = instr.X + 1;
+    assert(chip->I + sz <= 4096);
+
+    memcpy(chip->V, chip->memory + chip->I, sz);
+}
+
+
+// TODO:
+//  0XF633 set_BCD(V6) *(I+0) = BCD(3);*(I+1) = BCD(2);*(I+2) = BCD(1); - Stores the binary-coded decimal representation of VX, with the hundreds digit in memory at location in I, the tens digit at location I+1, and the ones digit at location I+2.
+
 
 opcode_t chip_fetch(const chip8_t *chip, uint16_t chip_addr) {
     assert(chip_addr <= (4096 - sizeof(uint16_t))); // usually chip_addr is the program counter
@@ -302,7 +425,8 @@ void chip_exec(chip8_t *chip, opcode_t instr) {
         chip->PC += sizeof(opcode_t);
         return;
     } else if (instr.data == 0x00EE) {
-        printf("%#06X return; - Returns from a subroutine.\n", instr.data);
+        i00EE(chip);
+        chip->PC += sizeof(opcode_t);
         return;
     }
 
@@ -322,25 +446,16 @@ void chip_exec(chip8_t *chip, opcode_t instr) {
             //chip->PC += sizeof(opcode_t); //it's a call-jump, do not move the PC
             return;
         case 3:
-            printf("%#06X if (V%x == %#02x) - Skips the next instruction if VX equals NN (usually the next instruction is a jump to skip a code block).\n",
-                   instr.data,
-                   instr.X,
-                   instr.NN
-            );
+            i3XNN(chip, instr);
+            chip->PC += sizeof(opcode_t);
             return;
         case 4:
-            printf("%#06X if (V%x != %#02x) - Skips the next instruction if VX does not equal NN (usually the next instruction is a jump to skip a code block).\n",
-                   instr.data,
-                   instr.X,
-                   instr.NN
-            );
+            i4XNN(chip, instr);
+            chip->PC += sizeof(opcode_t);
             return;
         case 5:
-            printf("%#06X if (V%x == V%x) - Skips the next instruction if VX does not equal NN (usually the next instruction is a jump to skip a code block).\n",
-                   instr.data,
-                   instr.X,
-                   instr.NN
-            );
+            i5XY0(chip, instr);
+            chip->PC += sizeof(opcode_t);
             return;
         case 6:
             i6XNN(chip, instr);
@@ -355,68 +470,40 @@ void chip_exec(chip8_t *chip, opcode_t instr) {
             // check last nibble
             switch (instr.N) {
                 case 0:
-                    printf("%#06X V%x = V%x - Sets VX to the value of VY.\n",
-                           instr.data,
-                           instr.X,
-                           instr.Y
-                    );
+                    i8XY0(chip, instr);
+                    chip->PC += sizeof(opcode_t);
                     return;
                 case 1:
-                    printf("%#06X V%x |= V%x - Sets VX to VX or VY. (bitwise OR operation).\n",
-                           instr.data,
-                           instr.X,
-                           instr.Y
-                    );
+                    i8XY1(chip, instr);
+                    chip->PC += sizeof(opcode_t);
                     return;
                 case 2:
-                    printf("%#06X V%x &= V%x - Sets VX to VX and VY. (bitwise AND operation).\n",
-                           instr.data,
-                           instr.X,
-                           instr.Y
-                    );
+                    i8XY2(chip, instr);
+                    chip->PC += sizeof(opcode_t);
                     return;
                 case 3:
-                    printf("%#06X V%x ^= V%x - Sets VX to VX xor VY.\n",
-                           instr.data,
-                           instr.X,
-                           instr.Y
-                    );
+                    i8XY3(chip, instr);
+                    chip->PC += sizeof(opcode_t);
                     return;
                 case 4:
-                    printf("%#06X V%x += V%x - Adds VY to VX. VF is set to 1 when there's an overflow, and to 0 when there is not.\n",
-                           instr.data,
-                           instr.X,
-                           instr.Y
-                    );
+                    i8XY4(chip, instr);
+                    chip->PC += sizeof(opcode_t);
                     return;
                 case 5:
-                    printf("%#06X V%x -= V%x - VY is subtracted from VX. VF is set to 0 when there's an underflow, and 1 when there is not. (i.e. VF set to 1 if VX >= VY and 0 if not).\n",
-                           instr.data,
-                           instr.X,
-                           instr.Y
-                    );
+                    i8XY5(chip, instr);
+                    chip->PC += sizeof(opcode_t);
                     return;
                 case 6:
-                    printf("%#06X V%x >>= 1 - Shifts VX to the right by 1, then stores the least significant bit of VX prior to the shift into VF.\n",
-                           instr.data,
-                           X(instr.data)
-                    );
+                    i8XY6(chip, instr);
+                    chip->PC += sizeof(opcode_t);
                     return;
-                case 7: {
-                    uint8_t vx = instr.X;
-                    printf(
-                            "%#06X V%x = V%x - V%x - Sets VX to VY minus VX. VF is set to 0 when there's an underflow, and 1 when there is not. (i.e. VF set to 1 if VY >= VX).\n",
-                            instr.data,
-                            vx,
-                            instr.Y, // Vy
-                            vx
-                    ); return;
-                }
+                case 7:
+                    i8XY7(chip, instr);
+                    chip->PC += sizeof(opcode_t);
+                    return;
                 case 0xE:
-                    printf("%#06X V%x <<= 1 - Shifts VX to the left by 1, then sets VF to 1 if the most significant bit of VX prior to that shift was set, or to 0 if it was unset.\n",
-                           instr.data,
-                           instr.X
-                    );
+                    i8XYE(chip, instr);
+                    chip->PC += sizeof(opcode_t);
                     return;
 
                 default:
@@ -424,13 +511,9 @@ void chip_exec(chip8_t *chip, opcode_t instr) {
             }
 
         case 9:
-            printf("%#06X if (V%x != V%x) - Skips the next instruction if VX does not equal VY. (Usually the next instruction is a jump to skip a code block).\n",
-                   instr.data,
-                   instr.X,
-                   instr.Y
-            );
+            i9XY0(chip, instr);
+            chip->PC += sizeof(opcode_t);
             return;
-
         case 0xA:
             iANNN(chip, instr);
             chip->PC += sizeof(opcode_t);
@@ -522,16 +605,12 @@ void chip_exec(chip8_t *chip, opcode_t instr) {
                     );
                     return;
                 case 0x55:
-                    printf("%#06X reg_dump(V%x, &I)  - Stores from V0 to VX (including VX) in memory, starting at address I. The offset from I is increased by 1 for each value written, but I itself is left unmodified.\n",
-                           instr.data,
-                           instr.X
-                    );
+                    iFX55(chip, instr);
+                    chip->PC += sizeof(opcode_t);
                     return;
                 case 0x65:
-                    printf("%#06X reg_load(V%x, &I) - Fills from V0 to VX (including VX) with values from memory, starting at address I. The offset from I is increased by 1 for each value read, but I itself is left unmodified.\n",
-                           instr.data,
-                           instr.X
-                    );
+                    iFX65(chip, instr);
+                    chip->PC += sizeof(opcode_t);
                     return;
 
                 default:
