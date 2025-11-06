@@ -56,8 +56,10 @@ typedef struct {
     volatile uint8_t delay_timer;
     volatile uint8_t sound_timer;
 
+    // TODO: qualora uno volesse salvare lo stato sul disco vigerebbe il discorso endianess e i campi andrebbero dichiarati come in opcode.h
     union {
-        uint16_t PC; // program counter
+        uint16_t PC : 12; // program counter
+        uint16_t    : 4;
     };
 
     // use(ful?) metadata
@@ -249,8 +251,8 @@ void iDXYN(chip8_t *chip, opcode_t instr) {
 
             // questo fa il wrap around, tecnicamente è una roba di super-chip in chip8 originale viene clippato e basta se esce dallo schermo.
             uint16_t pixel_index = SC(
-        (y + sprite_h) % SCREEN_HEIGHT,
-        (x + sprite_w) % SCREEN_WIDTH
+            (y + sprite_h) % SCREEN_HEIGHT,
+            (x + sprite_w) % SCREEN_WIDTH
             );
 
             uint8_t pixel_tmp = chip->screen[pixel_index];
