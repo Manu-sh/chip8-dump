@@ -5,7 +5,6 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 
 #include <bit_utility.h>
 #include <chip8.h>
@@ -17,6 +16,10 @@
 #if 1
 #include <gui.h>
 #include <raylib.h>
+
+#include <unistd.h>
+#include <signal.h>
+
 
 
 int main(int argc, char *argv[]) {
@@ -56,6 +59,7 @@ int main(int argc, char *argv[]) {
         // TODO: Update your variables here
         //----------------------------------------------------------------------------------
 
+        dbg("PC: %#04x", chip->PC);
         chip_exec(chip, chip_fetch(chip, chip->PC));
 
         // Draw
@@ -81,7 +85,7 @@ int main(int argc, char *argv[]) {
         EndDrawing();
 
         usleep(200 * 1000);
-
+        chip_tick(chip);
     }
 
 die:

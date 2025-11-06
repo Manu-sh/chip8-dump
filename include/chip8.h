@@ -85,6 +85,7 @@ chip8_t * chip_new() {
 
     self->is_running = false;
     self->stack = lifo_u16_new();
+    self->delay_timer = self->sound_timer = 0;
 
     return self;
 }
@@ -92,6 +93,12 @@ chip8_t * chip_new() {
 void chip_free(chip8_t *self) {
     lifo_u16_free(self->stack);
     free(self);
+}
+
+// tick down if non zero.
+void chip_tick(chip8_t *self) {
+    self->delay_timer -= !!self->delay_timer;
+    self->sound_timer -= !!self->sound_timer;
 }
 
 
@@ -179,6 +186,17 @@ void i6XNN(chip8_t *chip, opcode_t instr) {
 // 0XA22A I = 0X22A;
 void iANNN(chip8_t *chip, opcode_t instr) {
     chip->I = instr.NNN;
+}
+
+//PC = V0 + %#03X - Jumps to the address NNN plus V0.
+void iBNNN(chip8_t *chip, opcode_t instr) {
+    chip->PC = chip->V[instr.X] + instr.NNN;
+}
+
+// TODO: inizializzare il seed?
+// CXNN: Vx = rand() & NN - Sets VX to the result of a bitwise and operation on a random number (Typically: 0 to 255) and NN.
+void iCXNN(chip8_t *chip, opcode_t instr) {
+    chip->V[instr.X] = rand() & instr.NN;
 }
 
 // 0XD01F draw(V0, V1, f)
@@ -489,6 +507,7 @@ void chip_exec(chip8_t *chip, opcode_t instr) {
                instr.data,
                instr.NNN
             );
+            assert(0);
             return;
         case 1:
             i1NNN(chip, instr);
@@ -572,25 +591,16 @@ void chip_exec(chip8_t *chip, opcode_t instr) {
             chip->PC += sizeof(opcode_t);
             return;
         case 0xB:
-            printf("%#06X PC = V0 + %#03X - Jumps to the address NNN plus V0.\n",
-                   instr.data,
-                   instr.NNN
-            );
+            iBNNN(chip, instr);
             return;
-
         case 0xC:
-            printf("%#06X V%x = rand() & %#02X; - Sets VX to the result of a bitwise and operation on a random number (Typically: 0 to 255) and NN.\n",
-                   instr.data,
-                   instr.X,
-                   instr.NN
-            );
+            iCXNN(chip, instr);
+            chip->PC += sizeof(opcode_t);
             return;
-
         case 0xD:
             iDXYN(chip, instr);
             chip->PC += sizeof(opcode_t);
             return;
-
         case 0xE:
             switch (NN(instr.data)) {
                 case 0x9E:
@@ -620,6 +630,7 @@ void chip_exec(chip8_t *chip, opcode_t instr) {
                            instr.data,
                            instr.X
                     );
+                    assert(0);
                     return;
                 case 0x15:
                     iFX15(chip, instr);
