@@ -45,8 +45,8 @@ typedef struct {
 
     alignas(32) uint8_t screen[SCREEN_WIDTH * SCREEN_HEIGHT];
 
-    uint8_t delay_timer;
-    uint8_t sound_timer;
+    volatile uint8_t delay_timer;
+    volatile uint8_t sound_timer;
 
     union {
         uint16_t PC; // program counter
