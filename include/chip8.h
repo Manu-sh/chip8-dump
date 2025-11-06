@@ -9,6 +9,7 @@
 #include <string.h>
 #include <assert.h>
 #include <file_utility.h>
+#include <font.h>
 
 
 typedef uint16_t u16;
@@ -72,6 +73,10 @@ chip8_t * chip_new() {
 
     memset(self->memory, 0, sizeof(self->memory));
     memset(self->screen, 0, sizeof(self->screen)); // clear the screen
+
+    // copy front sprites at the beginning of the memory
+    assert(sizeof(font_sprites) < sizeof(self->reserved));
+    memcpy(self->reserved, font_sprites, sizeof(font_sprites));
 
     self->rom_size = 0;
     self->prog_beg = __builtin_assume_aligned(self->memory + 0x200, sizeof(uint16_t));
@@ -420,7 +425,40 @@ void iFX33(chip8_t *chip, opcode_t instr) {
     chip->memory[chip->I + 0] = value % 10;              // store 1
 }
 
-// TODO:  0XFC29 I = sprite_addr[Vc] - Sets I to the location of the sprite for the character in VX(only consider the lowest nibble). Characters 0-F (in hexadecimal) are represented by a 4x5 font.
+// es. 0XFC29 I = sprite_addr[Vc] -
+//  Sets I to the location of the sprite for the character in VX(only consider the lowest nibble).
+//  Characters 0-F (in hexadecimal) are represented by a 4x5 font.
+void iFX29(chip8_t *chip, opcode_t instr) {
+    //chip->I = chip->V[instr.X] & 0x0f;
+
+    //dbg("%d\n", N(chip->V[instr.X]));
+    //dbg("%d\n", N(0xfc));
+
+    chip->I = N(chip->V[instr.X]) * sizeof(font_sprites[0]);
+}
+
+// es. 0XF015 delay_timer(V0) - Sets the delay timer to VX.
+void iFX15(chip8_t *chip, opcode_t instr) {
+    chip->delay_timer = chip->V[instr.X];
+}
+
+// es. 0XF007 V0 = get_delay() - Sets VX to the value of the delay timer.
+void iFX07(chip8_t *chip, opcode_t instr) {
+    chip->V[instr.X] = chip->delay_timer;
+}
+
+// es. 0XF118 sound_timer(V1) - Sets the sound timer to VX.
+void iFX18(chip8_t *chip, opcode_t instr) {
+    chip->sound_timer = chip->V[instr.X];
+}
+
+// TODO: vedere se è possibile usare meno bit per chip->I (12 bit)
+
+// I += V%x - Adds VX to I. VF is not affected.
+void iFX1E(chip8_t *chip, opcode_t instr) {
+    chip->I += chip->V[instr.X];
+}
+
 
 opcode_t chip_fetch(const chip8_t *chip, uint16_t chip_addr) {
     assert(chip_addr <= (4096 - sizeof(uint16_t))); // usually chip_addr is the program counter
@@ -574,10 +612,8 @@ void chip_exec(chip8_t *chip, opcode_t instr) {
         case 0xF:
             switch (instr.NN) {
                 case 0x07:
-                    printf("%#06X V%x = get_delay() - Sets VX to the value of the delay timer.\n",
-                           instr.data,
-                           instr.X
-                    );
+                    iFX07(chip, instr);
+                    chip->PC += sizeof(opcode_t);
                     return;
                 case 0x0A:
                     printf("%#06X V%x = get_key() - A key press is awaited, and then stored in VX (blocking operation, all instruction halted until next key event, delay and sound timers should continue processing).\n",
@@ -586,28 +622,20 @@ void chip_exec(chip8_t *chip, opcode_t instr) {
                     );
                     return;
                 case 0x15:
-                    printf("%#06X delay_timer(V%x) - Sets the delay timer to VX.\n",
-                           instr.data,
-                           instr.X
-                    );
+                    iFX15(chip, instr);
+                    chip->PC += sizeof(opcode_t);
                     return;
                 case 0x18:
-                    printf("%#06X sound_timer(V%x) - Sets the sound timer to VX.\n",
-                           instr.data,
-                           instr.X
-                    );
+                    iFX18(chip, instr);
+                    chip->PC += sizeof(opcode_t);
                     return;
                 case 0x1E:
-                    printf("%#06X I += V%x - Adds VX to I. VF is not affected.\n",
-                           instr.data,
-                           instr.X
-                    );
+                    iFX1E(chip, instr);
+                    chip->PC += sizeof(opcode_t);
                     return;
                 case 0x29:
-                    printf("%#06X I = sprite_addr[V%x] - Sets I to the location of the sprite for the character in VX(only consider the lowest nibble). Characters 0-F (in hexadecimal) are represented by a 4x5 font.\n",
-                           instr.data,
-                           instr.X
-                    );
+                    iFX29(chip, instr);
+                    chip->PC += sizeof(opcode_t);
                     return;
                 case 0x33:
                     iFX33(chip, instr);

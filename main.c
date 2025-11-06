@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <bit_utility.h>
 #include <chip8.h>
@@ -79,7 +80,7 @@ int main(int argc, char *argv[]) {
         //DrawText("ciao!", 0, 0, 20, WHITE);
         EndDrawing();
 
-        sleep(1);
+        usleep(200 * 1000);
 
     }
 
