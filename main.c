@@ -43,13 +43,11 @@ int main(int argc, char *argv[]) {
 
     chip8_t *chip = chip_new();
 
-    if (!load_rom(chip, argv[1]))
+    if (!chip_load_rom(chip, argv[1]))
         goto die;
 
     //exec(chip, *(opcode_t *)(chip->memory + chip->PC));
     //exec(chip, *(opcode_t *)(chip->prog_beg));
-
-    chip->is_running = true;
 
     // Main game loop
     while (!WindowShouldClose()) { // Detect window close button or ESC key
@@ -66,14 +64,8 @@ int main(int argc, char *argv[]) {
         BeginDrawing();
         //ClearBackground(BLACK);
 
-
-
-
-        //i00E0(chip);
-
         // draw a line of pixel
         //memset(chip->screen + 2 * 64, 0xff, 64);
-
 
         //UpdateTexture(tex, scale_chip_screen(chip) );
         UpdateTexture(tex, scale_screen(chip));

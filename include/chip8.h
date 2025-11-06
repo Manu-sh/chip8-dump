@@ -22,26 +22,7 @@ enum { REG_V0, REG_V1, REG_V2, REG_V3, REG_V4, REG_V5, REG_V6, REG_V7, REG_V8, R
  The "8", "4", "6", and "2" keys are typically used for directional input.
 */
 
-enum {
-    KEY_0,
-    KEY_1,
-    KEY_2,
-    KEY_3,
-    KEY_4,
-    KEY_5,
-    KEY_6,
-    KEY_7,
-    KEY_8,
-    KEY_9,
-    KEY_10,
-    KEY_11,
-    KEY_12,
-    KEY_13,
-    KEY_14,
-    KEY_15, // 0xf
-
-    KEY_LEN
-};
+enum { KEY_0, KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6, KEY_7, KEY_8, KEY_9, KEY_10, KEY_11, KEY_12, KEY_13, KEY_14, KEY_15, KEY_LEN };
 
 typedef struct {
 
@@ -65,7 +46,6 @@ typedef struct {
         uint16_t   : 4;
     };
 
-    // TODO: forward list for the stack?
     lifo_u16 *stack;
 
     // per la grafica probabilmente è meglio usare direttamente vector_bit[64 * 32 * 8]
@@ -80,7 +60,6 @@ typedef struct {
         uint16_t PC; // program counter
     };
 
-
     // use(ful?) metadata
     struct {
         uint8_t *prog_beg; // the program start: memory + 0x200
@@ -88,32 +67,28 @@ typedef struct {
         uint16_t rom_size; // maximum value is 3584 bytes (the rom will be loaded at 0x200 address)
     };
 
-
-    bool is_running;
-
 } chip8_t;
 
 
 chip8_t * chip_new() {
 
-    chip8_t *self = malloc(sizeof(chip8_t));
+    chip8_t *self = calloc(1, sizeof(chip8_t));
     if (!self) return NULL;
 
-    memset(self->memory, 0, sizeof(self->memory));
-    memset(self->screen, 0, sizeof(self->screen)); // clear the screen
+    //memset(self->memory, 0, sizeof(self->memory));
+    //memset(self->screen, 0, sizeof(self->screen)); // clear the screen
 
     // copy front sprites at the beginning of the memory
     assert(sizeof(font_sprites) < sizeof(self->reserved));
     memcpy(self->reserved, font_sprites, sizeof(font_sprites));
 
-    self->rom_size = 0;
+    //self->rom_size = 0;
     self->prog_beg = __builtin_assume_aligned(self->memory + 0x200, sizeof(uint16_t));
     self->prog_end = self->prog_beg; // a default value
     self->PC       = 0x200;
 
-    self->is_running = false;
     self->stack = lifo_u16_new();
-    self->delay_timer = self->sound_timer = 0;
+    //self->delay_timer = self->sound_timer = 0;
 
     return self;
 }
@@ -130,7 +105,7 @@ void chip_tick(chip8_t *self) {
 }
 
 
-bool load_rom(chip8_t *chip, const char *fpath) {
+bool chip_load_rom(chip8_t *chip, const char *fpath) {
 
     FILE *file;
     if (!(file = fopen(fpath, "rb"))) {
