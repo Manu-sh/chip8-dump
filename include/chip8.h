@@ -22,7 +22,10 @@ enum { REG_V0, REG_V1, REG_V2, REG_V3, REG_V4, REG_V5, REG_V6, REG_V7, REG_V8, R
  The "8", "4", "6", and "2" keys are typically used for directional input.
 */
 
-enum { KEY_0, KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6, KEY_7, KEY_8, KEY_9, KEY_10, KEY_11, KEY_12, KEY_13, KEY_14, KEY_15, KEY_LEN };
+typedef uint8_t keystate_t;
+enum { HKEY_0, HKEY_1, HKEY_2, HKEY_3, HKEY_4, HKEY_5, HKEY_6, HKEY_7, HKEY_8, HKEY_9, HKEY_A, HKEY_B, HKEY_C, HKEY_D, HKEY_E, HKEY_F, HKEY_LEN };
+
+enum { NOT_PRESS, PRESS };
 
 typedef struct {
 
@@ -68,6 +71,8 @@ typedef struct {
         uint8_t *prog_end; // TODO: questo potrebbe non essere allineato
         uint16_t rom_size; // maximum value is 3584 bytes (the rom will be loaded at 0x200 address)
     };
+
+    keystate_t keypad[HKEY_LEN];
 
 } chip8_t;
 
@@ -453,6 +458,22 @@ void iFX1E(chip8_t *chip, opcode_t instr) {
     chip->I += chip->V[instr.X];
 }
 
+// EX9E. if (key() == Vx) Skips the next instruction if the key stored
+// in VX(only consider the lowest nibble) is pressed
+// (usually the next instruction is a jump to skip a code block).
+void iEX9E(chip8_t *chip, opcode_t instr) {
+    const uint8_t expected_key = N(chip->V[instr.X]);
+    chip->PC += (chip->keypad[ expected_key ] == PRESS) << 1; // same of: (chip->keypad[ N(chip->V[instr.V]) ] == PRESS) ? sizeof(opcode_t) : 0
+}
+
+// iEXA1 if (key() != V%x) - Skips the next instruction if the key stored
+// in VX(only consider the lowest nibble) is not pressed
+// (usually the next instruction is a jump to skip a code block).
+void iEXA1(chip8_t *chip, opcode_t instr) {
+    const uint8_t expected_key = N(chip->V[instr.X]);
+    chip->PC += (chip->keypad[ expected_key ] == NOT_PRESS) << 1;
+}
+
 
 opcode_t chip_fetch(const chip8_t *chip, uint16_t chip_addr) {
     assert(chip_addr <= (4096 - sizeof(uint16_t))); // usually chip_addr is the program counter
@@ -577,16 +598,12 @@ void chip_exec(chip8_t *chip, opcode_t instr) {
         case 0xE:
             switch (NN(instr.data)) {
                 case 0x9E:
-                    printf("%#06X if (key() == V%x) - Skips the next instruction if the key stored in VX(only consider the lowest nibble) is pressed (usually the next instruction is a jump to skip a code block).\n",
-                       instr.data,
-                       instr.X
-                    );
+                    iEX9E(chip, instr);
+                    chip->PC += sizeof(opcode_t);
                     return;
                 case 0xA1:
-                    printf("%#06X if (key() != V%x) - Skips the next instruction if the key stored in VX(only consider the lowest nibble) is not pressed (usually the next instruction is a jump to skip a code block).\n",
-                       instr.data,
-                       instr.X
-                    );
+                    iEXA1(chip, instr);
+                    chip->PC += sizeof(opcode_t);
                     return;
 
                 default:
