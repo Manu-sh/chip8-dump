@@ -403,9 +403,24 @@ void iFX65(chip8_t *chip, opcode_t instr) {
 }
 
 
-// TODO:
-//  0XF633 set_BCD(V6) *(I+0) = BCD(3);*(I+1) = BCD(2);*(I+2) = BCD(1); - Stores the binary-coded decimal representation of VX, with the hundreds digit in memory at location in I, the tens digit at location I+1, and the ones digit at location I+2.
+//  es. 0XF633 set_BCD(V6) *(I+0) = BCD(3);*(I+1) = BCD(2);*(I+2) = BCD(1); - Stores the binary-coded decimal representation of VX, with the hundreds digit in memory at location in I, the tens digit at location I+1, and the ones digit at location I+2.
+// Store the binary-coded decimal equivalent of the value stored in register VX
+// at addresses I, I + 1, and I + 2
+// The interpreter takes the decimal value of Vx,
+// and places the hundreds digit in memory at location in I,
+// the tens digit at location I+1,
+// and the ones digit at location I+2.
+void iFX33(chip8_t *chip, opcode_t instr) {
 
+    assert(chip->I + 2 < 4096); // mem[I+2] writeable
+
+    uint8_t value = chip->V[instr.X]; // es. 123
+    chip->memory[chip->I + 2] = value % 10, value /= 10; // store 3
+    chip->memory[chip->I + 1] = value % 10, value /= 10; // store 2
+    chip->memory[chip->I + 0] = value % 10;              // store 1
+}
+
+// TODO:  0XFC29 I = sprite_addr[Vc] - Sets I to the location of the sprite for the character in VX(only consider the lowest nibble). Characters 0-F (in hexadecimal) are represented by a 4x5 font.
 
 opcode_t chip_fetch(const chip8_t *chip, uint16_t chip_addr) {
     assert(chip_addr <= (4096 - sizeof(uint16_t))); // usually chip_addr is the program counter
@@ -595,14 +610,8 @@ void chip_exec(chip8_t *chip, opcode_t instr) {
                     );
                     return;
                 case 0x33:
-                    printf(
-                            "%#06X set_BCD(V%x) "
-                            "*(I+0) = BCD(3);"
-                            "*(I+1) = BCD(2);"
-                            "*(I+2) = BCD(1); - Stores the binary-coded decimal representation of VX, with the hundreds digit in memory at location in I, the tens digit at location I+1, and the ones digit at location I+2.\n",
-                            instr.data,
-                            instr.X
-                    );
+                    iFX33(chip, instr);
+                    chip->PC += sizeof(opcode_t);
                     return;
                 case 0x55:
                     iFX55(chip, instr);
