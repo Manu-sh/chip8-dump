@@ -244,8 +244,8 @@ void iDXYN(chip8_t *chip, opcode_t instr) {
     for (uint8_t sprite_h = 0; sprite_h < sprite_bit_height; ++sprite_h) {
         for (uint8_t sprite_w = 0; sprite_w < sprite_bit_width; ++sprite_w) {
 
-            uint8_t sprite_bit_idx = sprite_h * sprite_bit_width + sprite_w; // a bit matrix in row-major-order
-            uint8_t pixel = access_bit(beg_sprite, sprite_bit_idx) ? 0xff : 0x00;
+            const uint8_t sprite_bit_idx = sprite_h * sprite_bit_width + sprite_w; // a bit matrix in row-major-order
+            const uint8_t pixel = access_bit(beg_sprite, sprite_bit_idx) ? 0xff : 0x00;
 
             printf("%d ", pixel ? 1 : 0);
 
@@ -255,7 +255,7 @@ void iDXYN(chip8_t *chip, opcode_t instr) {
             (x + sprite_w) % SCREEN_WIDTH
             );
 
-            uint8_t pixel_tmp = chip->screen[pixel_index];
+            const uint8_t pixel_tmp = chip->screen[pixel_index];
             chip->screen[pixel_index] ^= pixel;
             chip->VF |= pixel_tmp & pixel; // disegna in XOR qua c'è il carry chip->VF = chip->VF || (old_pixel == pixel); spenge il pixel se entrambi sono on
         }
