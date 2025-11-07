@@ -270,8 +270,9 @@ void iDXYN(chip8_t *chip, opcode_t instr) {
             const uint8_t sprite_bit_idx = sprite_h * sprite_bit_width + sprite_w; // a bit matrix in row-major-order
             const uint8_t pixel = access_bit(beg_sprite, sprite_bit_idx) ? 0xff : 0x00;
 
+#ifdef CHIP_DEBUG
             printf("%d ", pixel ? 1 : 0);
-
+#endif
             // questo fa il wrap around, tecnicamente è una roba di super-chip in chip8 originale viene clippato e basta se esce dallo schermo.
             uint16_t pixel_index = SC(
             (y + sprite_h) % SCREEN_HEIGHT,
@@ -282,8 +283,9 @@ void iDXYN(chip8_t *chip, opcode_t instr) {
             chip->screen[pixel_index] ^= pixel;
             chip->VF |= pixel_tmp & pixel; // disegna in XOR qua c'è il carry chip->VF = chip->VF || (old_pixel == pixel); spenge il pixel se entrambi sono on
         }
-
+#ifdef CHIP_DEBUG
         printf("%c", '\n');
+#endif
     }
 }
 
@@ -505,7 +507,9 @@ opcode_t chip_fetch(const chip8_t *chip, uint16_t chip_addr) {
 
 void chip_exec(chip8_t *chip, opcode_t instr) {
 
+#ifdef CHIP_DEBUG
     dump_instruction(instr);
+#endif
 
     if (instr.data == 0x00E0) {
         i00E0(chip);

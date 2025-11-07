@@ -1,6 +1,9 @@
 #pragma ide diagnostic ignored "EndlessLoop"
 
 #define _DEFAULT_SOURCE
+
+//#define CHIP_DEBUG
+
 #include <bit_utility.h>
 #include <chip8.h>
 #include <font.h>
@@ -107,7 +110,7 @@ int main(int argc, char *argv[]) {
 
     while (1) {
 
-        while (SDL_PollEvent(&event)) {
+        if (SDL_PollEvent(&event)) {
 
             if (event.type == SDL_EVENT_QUIT)
                 goto die;
@@ -116,7 +119,9 @@ int main(int argc, char *argv[]) {
                 continue;
 
             if (sdl_remap_key(event.key.scancode, chip->keypad)) {
-                printf("some key pressed\n");
+                #ifdef CHIP_DEBUG
+                    printf("some key pressed\n");
+                #endif
                 //sleep(1);
             }
         }
@@ -137,7 +142,9 @@ int main(int argc, char *argv[]) {
         SDL_RenderPresent(renderer);
         SDL_DestroyTexture(texture); // rilascia texture temporanea
 
+#ifdef CHIP_DEBUG
         printf("%s\n", byte_dump(chip->keypad, sizeof(chip->keypad)));
+#endif
 
         if (chronos_elapsed(&timer60hz) > 16) {
             chip_tick(chip);
