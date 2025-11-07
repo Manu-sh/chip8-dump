@@ -83,7 +83,7 @@ int main(int argc, char *argv[]) {
     );
 
     SDL_Renderer *renderer = SDL_CreateRenderer(window, NULL);
-    SDL_SetRenderVSync(renderer, SDL_RENDERER_VSYNC_ADAPTIVE); // sync with display HZ
+    //SDL_SetRenderVSync(renderer, SDL_RENDERER_VSYNC_ADAPTIVE); // sync with display HZ
 
     SDL_Surface *surface = SDL_CreateSurface(
         SCREEN_WIDTH  * SCALE,
@@ -115,7 +115,7 @@ int main(int argc, char *argv[]) {
 
             if (sdl_remap_key(event.key.scancode, chip->keypad)) {
                 printf("some key pressed\n");
-                sleep(1);
+                //sleep(1);
             }
         }
 
@@ -127,7 +127,6 @@ int main(int argc, char *argv[]) {
         memcpy(surface->pixels, scale_screen(chip), SCREEN_WIDTH * SCALE * SCREEN_HEIGHT * SCALE);
         SDL_UnlockSurface(surface);
 
-
         // Aggiorna la texture con il contenuto del framebuffer
         SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
 
@@ -138,9 +137,9 @@ int main(int argc, char *argv[]) {
 
         printf("%s\n", byte_dump(chip->keypad, sizeof(chip->keypad)));
 
-        //usleep(10 * 1000);
+        //usleep(3 * 10 * 1000);
         chip_tick(chip);
-        memset(chip->keypad, NOT_PRESS, sizeof(chip->keypad));
+        //memset(chip->keypad, NOT_PRESS, sizeof(chip->keypad));
     }
 
 die:

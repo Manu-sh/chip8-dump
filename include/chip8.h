@@ -464,6 +464,8 @@ void iFX1E(chip8_t *chip, opcode_t instr) {
 void iEX9E(chip8_t *chip, opcode_t instr) {
     const uint8_t expected_key = N(chip->V[instr.X]);
     chip->PC += (chip->keypad[ expected_key ] == PRESS) << 1; // same of: (chip->keypad[ N(chip->V[instr.V]) ] == PRESS) ? sizeof(opcode_t) : 0
+
+    chip->keypad[expected_key] = NOT_PRESS;
 }
 
 // iEXA1 if (key() != V%x) - Skips the next instruction if the key stored
