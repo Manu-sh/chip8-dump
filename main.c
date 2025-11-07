@@ -87,10 +87,11 @@ int main(int argc, char *argv[]) {
 
     SDL_Renderer *renderer = SDL_CreateRenderer(window, NULL);
     //SDL_SetRenderVSync(renderer, SDL_RENDERER_VSYNC_ADAPTIVE); // sync with display HZ
+    SDL_SetRenderScale(renderer, SCALE, SCALE);
 
     SDL_Surface *surface = SDL_CreateSurface(
-        SCREEN_WIDTH  * SCALE,
-        SCREEN_HEIGHT * SCALE,
+        SCREEN_WIDTH,
+        SCREEN_HEIGHT,
         SDL_PIXELFORMAT_INDEX8
     );
 
@@ -131,11 +132,12 @@ int main(int argc, char *argv[]) {
 
         // Copia il framebuffer dentro la surface
         SDL_LockSurface(surface);
-        memcpy(surface->pixels, scale_screen(chip), SCREEN_WIDTH * SCALE * SCREEN_HEIGHT * SCALE);
+        memcpy(surface->pixels, chip->screen, SCREEN_WIDTH * SCREEN_HEIGHT);
         SDL_UnlockSurface(surface);
 
         // Aggiorna la texture con il contenuto del framebuffer
         SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
+        SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);
 
         SDL_RenderClear(renderer);
         SDL_RenderTexture(renderer, texture, NULL, NULL);
