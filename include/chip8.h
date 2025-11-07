@@ -82,9 +82,6 @@ chip8_t * chip_new() {
     chip8_t *self = calloc(1, sizeof(chip8_t));
     if (!self) return NULL;
 
-    //memset(self->memory, 0, sizeof(self->memory));
-    //memset(self->screen, 0, sizeof(self->screen)); // clear the screen
-
     // copy front sprites at the beginning of the memory
     assert(sizeof(font_sprites) < sizeof(self->reserved));
     memcpy(self->reserved, font_sprites, sizeof(font_sprites));
@@ -100,6 +97,25 @@ chip8_t * chip_new() {
     return self;
 }
 
+/*
+void chip_reset(chip8_t *self) {
+
+    lifo_u16_free(self->stack);
+    memset(self, 0, sizeof(chip8_t));
+
+    // copy front sprites at the beginning of the memory
+    assert(sizeof(font_sprites) < sizeof(self->reserved));
+    memcpy(self->reserved, font_sprites, sizeof(font_sprites));
+
+    self->prog_beg = __builtin_assume_aligned(self->memory + 0x200, sizeof(uint16_t));
+    self->prog_end = self->prog_beg; // a default value
+    self->PC       = 0x200;
+
+    self->stack = lifo_u16_new();
+}
+*/
+
+
 void chip_free(chip8_t *self) {
     lifo_u16_free(self->stack);
     free(self);
@@ -113,6 +129,8 @@ void chip_tick(chip8_t *self) {
 
 
 bool chip_load_rom(chip8_t *chip, const char *fpath) {
+
+    assert(chip->rom_size == 0); // rom already loaded, crash the program
 
     FILE *file;
     if (!(file = fopen(fpath, "rb"))) {

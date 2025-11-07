@@ -69,7 +69,6 @@ bool sdl_remap_key(SDL_Scancode keycode, uint8_t keypad[HKEY_LEN]) {
     return false;
 }
 
-
 int main(int argc, char *argv[]) {
 
     assert(argc > 1);
@@ -98,14 +97,12 @@ int main(int argc, char *argv[]) {
     assert(argc > 1);
 
     chip8_t *chip = chip_new();
-
     if (!chip_load_rom(chip, argv[1]))
         goto die;
 
     SDL_Event event;
 
     chronos_t timer60hz;
-
     chronos_start(&timer60hz);
 
     while (1) {
@@ -147,9 +144,6 @@ int main(int argc, char *argv[]) {
             chronos_restart(&timer60hz);
         }
 
-        //usleep(3 * 10 * 1000);
-        //chip_tick(chip); // TODO: implementare il timer qui
-        //memset(chip->keypad, NOT_PRESS, sizeof(chip->keypad));
     }
 
 die:
