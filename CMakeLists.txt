@@ -10,8 +10,8 @@ set(MY_COLLECTION_PATH ${PROJECT_SOURCE_DIR}/my_collections/src)
 
 add_executable(${PROJECT_NAME} main.c)
 
-find_package(raylib 2.0 REQUIRED)
-target_link_libraries(${PROJECT_NAME} raylib)
+find_package(SDL3 REQUIRED CONFIG REQUIRED COMPONENTS SDL3)
+target_link_libraries(${PROJECT_NAME} PRIVATE SDL3::SDL3)
 
 target_include_directories(${PROJECT_NAME} PUBLIC ${INC_PATH})
 target_include_directories(${PROJECT_NAME} PUBLIC ${MY_COLLECTION_PATH})
