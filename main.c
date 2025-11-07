@@ -1,3 +1,5 @@
+#pragma ide diagnostic ignored "EndlessLoop"
+
 #define _DEFAULT_SOURCE
 #include <bit_utility.h>
 #include <chip8.h>
@@ -7,10 +9,12 @@
 #include <scale.h>
 
 #include <stdio.h>
+#include <stdbool.h>
 #include <stdint.h>
-#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
+
 #include <unistd.h>
 #include <signal.h>
 
@@ -38,14 +42,37 @@ void sdl_palette_free(SDL_Palette *palette) {
     SDL_DestroyPalette(palette);
 }
 
+
+bool sdl_remap_key(SDL_Scancode keycode, uint8_t keypad[HKEY_LEN]) {
+
+    switch (keycode) {
+        case SDL_SCANCODE_0: keypad[HKEY_0] = PRESS; return true;
+        case SDL_SCANCODE_1: keypad[HKEY_1] = PRESS; return true;
+        case SDL_SCANCODE_2: keypad[HKEY_2] = PRESS; return true;
+        case SDL_SCANCODE_3: keypad[HKEY_3] = PRESS; return true;
+        case SDL_SCANCODE_4: keypad[HKEY_4] = PRESS; return true;
+        case SDL_SCANCODE_5: keypad[HKEY_5] = PRESS; return true;
+        case SDL_SCANCODE_6: keypad[HKEY_6] = PRESS; return true;
+        case SDL_SCANCODE_7: keypad[HKEY_7] = PRESS; return true;
+        case SDL_SCANCODE_8: keypad[HKEY_8] = PRESS; return true;
+        case SDL_SCANCODE_9: keypad[HKEY_9] = PRESS; return true;
+        case SDL_SCANCODE_A: keypad[HKEY_A] = PRESS; return true;
+        case SDL_SCANCODE_B: keypad[HKEY_B] = PRESS; return true;
+        case SDL_SCANCODE_C: keypad[HKEY_C] = PRESS; return true;
+        case SDL_SCANCODE_D: keypad[HKEY_D] = PRESS; return true;
+        case SDL_SCANCODE_E: keypad[HKEY_E] = PRESS; return true;
+        case SDL_SCANCODE_F: keypad[HKEY_F] = PRESS; return true;
+        default: break;
+    }
+
+    return false;
+}
+
+
 int main(int argc, char *argv[]) {
 
     assert(argc > 1);
     printf("argv[1] = \"%s\"\n", argv[1]);
-
-    //SetTraceLogLevel(LOG_ERROR);
-    //InitWindow(SCREEN_WIDTH * SCALE, SCREEN_HEIGHT * SCALE, "chip8 emulator");
-    //SetTargetFPS(60); // Set our game to run at 60 frames-per-second
 
     SDL_Init(SDL_INIT_VIDEO);
     SDL_Window *window = SDL_CreateWindow(
@@ -56,7 +83,7 @@ int main(int argc, char *argv[]) {
     );
 
     SDL_Renderer *renderer = SDL_CreateRenderer(window, NULL);
-    SDL_SetRenderVSync(renderer, SDL_RENDERER_VSYNC_ADAPTIVE);
+    SDL_SetRenderVSync(renderer, SDL_RENDERER_VSYNC_ADAPTIVE); // sync with display HZ
 
     SDL_Surface *surface = SDL_CreateSurface(
         SCREEN_WIDTH  * SCALE,
@@ -86,43 +113,14 @@ int main(int argc, char *argv[]) {
             if (event.type != SDL_EVENT_KEY_DOWN || event.key.repeat)
                 continue;
 
-            switch (event.key.scancode) {
-                case SDL_SCANCODE_0: chip->keypad[HKEY_0] = PRESS; break;
-                case SDL_SCANCODE_1: chip->keypad[HKEY_1] = PRESS; break;
-            }
-
-            printf("some key pressed\n");
-            sleep(1);
-        }
-
-/*
-        for (int k; (k = GetKeyPressed()) != 0; ) {
-            switch (k) {
-                case KEY_ZERO:  chip->keypad[HKEY_0] = PRESS; break;
-                case KEY_ONE:   chip->keypad[HKEY_1] = PRESS; break;
-                case KEY_TWO:   chip->keypad[HKEY_2] = PRESS; break;
-                case KEY_THREE: chip->keypad[HKEY_3] = PRESS; break;
-                case KEY_FOUR:  chip->keypad[HKEY_4] = PRESS; break;
-                case KEY_FIVE:  chip->keypad[HKEY_5] = PRESS; break;
-                case KEY_SIX:   chip->keypad[HKEY_6] = PRESS; break;
-                case KEY_SEVEN: chip->keypad[HKEY_7] = PRESS; break;
-                case KEY_EIGHT: chip->keypad[HKEY_8] = PRESS; break;
-                case KEY_NINE:  chip->keypad[HKEY_9] = PRESS; break;
-                case KEY_A:     chip->keypad[HKEY_A] = PRESS; break;
-                case KEY_B:     chip->keypad[HKEY_B] = PRESS; break;
-                case KEY_C:     chip->keypad[HKEY_C] = PRESS; break;
-                case KEY_D:     chip->keypad[HKEY_D] = PRESS; break;
-                case KEY_E:     chip->keypad[HKEY_E] = PRESS; break;
-                case KEY_F:     chip->keypad[HKEY_F] = PRESS; break;
+            if (sdl_remap_key(event.key.scancode, chip->keypad)) {
+                printf("some key pressed\n");
+                sleep(1);
             }
         }
-*/
-        // key_states[SDL_SCANCODE_W]
 
         //dbg("PC: %#04x ", chip->PC);
         chip_exec(chip, chip_fetch(chip, chip->PC));
-
-
 
         // Copia il framebuffer dentro la surface
         SDL_LockSurface(surface);
@@ -144,27 +142,6 @@ int main(int argc, char *argv[]) {
         chip_tick(chip);
         memset(chip->keypad, NOT_PRESS, sizeof(chip->keypad));
     }
-
-    /* for (int k; (k = GetKeyPressed()) != 0; ) {
-        switch (k) {
-            case KEY_ZERO:  chip->keypad[HKEY_0] = PRESS; break;
-            case KEY_ONE:   chip->keypad[HKEY_1] = PRESS; break;
-            case KEY_TWO:   chip->keypad[HKEY_2] = PRESS; break;
-            case KEY_THREE: chip->keypad[HKEY_3] = PRESS; break;
-            case KEY_FOUR:  chip->keypad[HKEY_4] = PRESS; break;
-            case KEY_FIVE:  chip->keypad[HKEY_5] = PRESS; break;
-            case KEY_SIX:   chip->keypad[HKEY_6] = PRESS; break;
-            case KEY_SEVEN: chip->keypad[HKEY_7] = PRESS; break;
-            case KEY_EIGHT: chip->keypad[HKEY_8] = PRESS; break;
-            case KEY_NINE:  chip->keypad[HKEY_9] = PRESS; break;
-            case KEY_A:     chip->keypad[HKEY_A] = PRESS; break;
-            case KEY_B:     chip->keypad[HKEY_B] = PRESS; break;
-            case KEY_C:     chip->keypad[HKEY_C] = PRESS; break;
-            case KEY_D:     chip->keypad[HKEY_D] = PRESS; break;
-            case KEY_E:     chip->keypad[HKEY_E] = PRESS; break;
-            case KEY_F:     chip->keypad[HKEY_F] = PRESS; break;
-        }
-    }*/
 
 die:
     // Close window and OpenGL context
