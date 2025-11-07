@@ -50,16 +50,16 @@ void sdl_palette_free(SDL_Palette *palette) {
 bool sdl_remap_key(SDL_Scancode keycode, uint8_t keypad[HKEY_LEN]) {
 
     switch (keycode) {
-        case SDL_SCANCODE_0: keypad[HKEY_0] = PRESS; return true;
-        case SDL_SCANCODE_1: keypad[HKEY_1] = PRESS; return true;
-        case SDL_SCANCODE_2: keypad[HKEY_2] = PRESS; return true;
-        case SDL_SCANCODE_3: keypad[HKEY_3] = PRESS; return true;
-        case SDL_SCANCODE_4: keypad[HKEY_4] = PRESS; return true;
-        case SDL_SCANCODE_5: keypad[HKEY_5] = PRESS; return true;
-        case SDL_SCANCODE_6: keypad[HKEY_6] = PRESS; return true;
-        case SDL_SCANCODE_7: keypad[HKEY_7] = PRESS; return true;
-        case SDL_SCANCODE_8: keypad[HKEY_8] = PRESS; return true;
-        case SDL_SCANCODE_9: keypad[HKEY_9] = PRESS; return true;
+        case SDL_SCANCODE_KP_0: case SDL_SCANCODE_0: keypad[HKEY_0] = PRESS; return true;
+        case SDL_SCANCODE_KP_1: case SDL_SCANCODE_1: keypad[HKEY_1] = PRESS; return true;
+        case SDL_SCANCODE_KP_2: case SDL_SCANCODE_2: keypad[HKEY_2] = PRESS; return true;
+        case SDL_SCANCODE_KP_3: case SDL_SCANCODE_3: keypad[HKEY_3] = PRESS; return true;
+        case SDL_SCANCODE_KP_4: case SDL_SCANCODE_4: keypad[HKEY_4] = PRESS; return true;
+        case SDL_SCANCODE_KP_5: case SDL_SCANCODE_5: keypad[HKEY_5] = PRESS; return true;
+        case SDL_SCANCODE_KP_6: case SDL_SCANCODE_6: keypad[HKEY_6] = PRESS; return true;
+        case SDL_SCANCODE_KP_7: case SDL_SCANCODE_7: keypad[HKEY_7] = PRESS; return true;
+        case SDL_SCANCODE_KP_8: case SDL_SCANCODE_8: keypad[HKEY_8] = PRESS; return true;
+        case SDL_SCANCODE_KP_9: case SDL_SCANCODE_9: keypad[HKEY_9] = PRESS; return true;
         case SDL_SCANCODE_A: keypad[HKEY_A] = PRESS; return true;
         case SDL_SCANCODE_B: keypad[HKEY_B] = PRESS; return true;
         case SDL_SCANCODE_C: keypad[HKEY_C] = PRESS; return true;
