@@ -24,6 +24,7 @@
 #include <SDL3/SDL_render.h>
 #include <SDL3/SDL_keyboard.h>
 
+#include <chronos.h>
 
 SDL_Palette * sdl_palette_new() {
 
@@ -103,6 +104,10 @@ int main(int argc, char *argv[]) {
 
     SDL_Event event;
 
+    chronos_t timer60hz;
+
+    chronos_start(&timer60hz);
+
     while (1) {
 
         while (SDL_PollEvent(&event)) {
@@ -137,8 +142,13 @@ int main(int argc, char *argv[]) {
 
         printf("%s\n", byte_dump(chip->keypad, sizeof(chip->keypad)));
 
+        if (chronos_elapsed(&timer60hz) > 16) {
+            chip_tick(chip);
+            chronos_restart(&timer60hz);
+        }
+
         //usleep(3 * 10 * 1000);
-        chip_tick(chip);
+        //chip_tick(chip); // TODO: implementare il timer qui
         //memset(chip->keypad, NOT_PRESS, sizeof(chip->keypad));
     }
 
