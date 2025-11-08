@@ -25,7 +25,7 @@ enum { REG_V0, REG_V1, REG_V2, REG_V3, REG_V4, REG_V5, REG_V6, REG_V7, REG_V8, R
 typedef uint8_t keystate_t;
 typedef enum { HKEY_0, HKEY_1, HKEY_2, HKEY_3, HKEY_4, HKEY_5, HKEY_6, HKEY_7, HKEY_8, HKEY_9, HKEY_A, HKEY_B, HKEY_C, HKEY_D, HKEY_E, HKEY_F, HKEY_LEN } keycodes_t;
 
-enum { NOT_PRESS, PRESS };
+enum { NOT_PRESSED, PRESSED };
 
 typedef struct {
 
@@ -144,7 +144,7 @@ void chip_press_key(chip8_t *self, keycodes_t key_code) {
     key_code &= 0xf; // same of key_code %= HKEY_LEN
 
     if (LIKELY(!self->is_awaiting)) {
-        self->keypad[key_code] = PRESS;
+        self->keypad[key_code] = PRESSED;
         return;
     }
 
@@ -495,9 +495,9 @@ void iFX1E(chip8_t *chip, opcode_t instr) {
 // (usually the next instruction is a jump to skip a code block).
 void iEX9E(chip8_t *chip, opcode_t instr) {
     const uint8_t expected_key = N(chip->V[instr.X]);
-    chip->PC += (chip->keypad[ expected_key ] == PRESS) << 1; // same of: (chip->keypad[ N(chip->V[instr.V]) ] == PRESS) ? sizeof(opcode_t) : 0
+    chip->PC += (chip->keypad[ expected_key ] == PRESSED) << 1; // same of: (chip->keypad[ N(chip->V[instr.V]) ] == PRESSED) ? sizeof(opcode_t) : 0
 
-    chip->keypad[expected_key] = NOT_PRESS;
+    chip->keypad[expected_key] = NOT_PRESSED;
 }
 
 // iEXA1 if (key() != V%x) - Skips the next instruction if the key stored
@@ -505,7 +505,7 @@ void iEX9E(chip8_t *chip, opcode_t instr) {
 // (usually the next instruction is a jump to skip a code block).
 void iEXA1(chip8_t *chip, opcode_t instr) {
     const uint8_t expected_key = N(chip->V[instr.X]);
-    chip->PC += (chip->keypad[ expected_key ] == NOT_PRESS) << 1;
+    chip->PC += (chip->keypad[ expected_key ] == NOT_PRESSED) << 1;
 }
 
 
