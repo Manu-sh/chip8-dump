@@ -44,11 +44,9 @@ typedef struct {
     };
 
     // 2**12 -> 4096 possible values from 0 to 2**12-1
-    union {
-        uint16_t I : 12; // address register (it can only be loaded with a 12-bit memory address due to the range of memory accessible to CHIP-8)
-        uint16_t   : 4;
-    };
-
+    uint16_t I : 12; // address register (it can only be loaded with a 12-bit memory address due to the range of memory accessible to CHIP-8)
+    uint16_t   : 4;
+    
     lifo_u16 *stack;
 
     // per la grafica probabilmente è meglio usare direttamente vector_bit[64 * 32 * 8]
@@ -59,11 +57,9 @@ typedef struct {
     volatile uint8_t delay_timer;
     volatile uint8_t sound_timer;
 
-    // TODO: qualora uno volesse salvare lo stato sul disco vigerebbe il discorso endianess e i campi andrebbero dichiarati come in opcode.h
-    union {
-        uint16_t PC : 12; // program counter
-        uint16_t    : 4;
-    };
+    // TODO: qualora uno volesse salvare lo stato sul disco vigerebbe il discorso endianess e i campi andrebbero dichiarati come in instruction.h
+    uint16_t PC : 12; // program counter
+    uint16_t    : 4;
 
     // use(ful?) metadata
     struct {
@@ -75,7 +71,7 @@ typedef struct {
     keystate_t keypad[HKEY_LEN];
     struct {
         bool is_awaiting; // iFX0A: when awaiting for keypress every instruction is halted
-        uint8_t await_dreg: 4; // in which data register store the awaited key (0, 0xf);
+        uint8_t await_dreg : 4; // in which data register store the awaited key (0, 0xf);
     };
 
 } chip8_t;
@@ -205,7 +201,7 @@ void iANNN(chip8_t *chip, instr_t instr) {
 
 //PC = V0 + %#03X - Jumps to the address NNN plus V0.
 void iBNNN(chip8_t *chip, instr_t instr) {
-    chip->PC = chip->V[instr.X] + instr.NNN;
+    chip->PC = chip->V0 + instr.NNN; // CHIP-8 compliant
 }
 
 // TODO: inizializzare il seed?
@@ -336,17 +332,11 @@ void i2NNN(chip8_t *chip, instr_t instr) {
 
     // 0x2NNN: Call subroutine at NNN
     // Store current address to return to on subroutine stack ("push" it on the stack)
-    //   and set program counter to subroutine address so that the next opcode
+    //   and set program counter to subroutine address so that the next instruction
     //   is gotten from there.
 
     lifo_u16_push(chip->stack, chip->PC);
     chip->PC = instr.NNN;
-
-    //puts( byte_dump(chip->memory + chip->PC, sizeof(instr_t)) );
-    //dbg("pc=%d\n", chip->PC);
-    //dbg("pc=%u\n", instr.NNN);
-    //dbg("pc=%u\n", chip->PC);
-    //dbg("end_prog=%p pc_addr=%p\n", chip->prog_end, chip->memory + chip->PC);
 }
 
 // 0X00EE return; - Returns from a subroutine.
@@ -363,16 +353,19 @@ void i8XY0(chip8_t *chip, instr_t instr) {
 // es. 0X87B1 V7 |= Vb - Sets VX to VX or VY. (bitwise OR operation).
 void i8XY1(chip8_t *chip, instr_t instr) {
     chip->V[instr.X] |= chip->V[instr.Y];
+    chip->VF = 0; // CHIP-8 compliant: add VF reset as described here: https://github.com/Timendus/chip8-test-suite/blob/main/bin/
 }
 
 // es. 0X87B2 V7 &= Vb - Sets VX to VX and VY. (bitwise AND operation).
 void i8XY2(chip8_t *chip, instr_t instr) {
     chip->V[instr.X] &= chip->V[instr.Y];
+    chip->VF = 0; // CHIP-8 compliant
 }
 
 // es. 0X87B3 V7 ^= Vb - Sets VX to VX xor VY.
 void i8XY3(chip8_t *chip, instr_t instr) {
     chip->V[instr.X] ^= chip->V[instr.Y];
+    chip->VF = 0; // CHIP-8 compliant
 }
 
 // es. 0X8764 V7 += V6 - Adds VY to VX. VF is set to 1 when there's an overflow, and to 0 when there is not.
@@ -408,14 +401,26 @@ void i8XY7(chip8_t *chip, instr_t instr) {
 
 // es. 0X866E V6 <<= 1 - Shifts VX to the left by 1, then sets VF to 1 if the most significant bit of VX prior to that shift was set, or to 0 if it was unset.
 void i8XYE(chip8_t *chip, instr_t instr) {
+    /*
     chip->VF = access_bit(chip->V + instr.X, 0); // take the msb
     chip->V[instr.X] <<= 1;
+     */
+
+    // CHIP-8 compliant
+    chip->VF = access_bit(chip->V + instr.Y, 0); // take the lsb
+    chip->V[instr.X] = chip->V[instr.Y] << 1;
 }
 
 // es. 0X8666 V6 >>= 1 - Shifts VX to the right by 1, then stores the least significant bit of VX prior to the shift into VF.
 void i8XY6(chip8_t *chip, instr_t instr) {
+    /*
     chip->VF = access_bit(chip->V + instr.X, sizeof(uint8_t) - 1); // take the lsb
     chip->V[instr.X] >>= 1;
+     */
+
+    // CHIP-8 compliant
+    chip->VF = access_bit(chip->V + instr.Y, sizeof(uint8_t) - 1); // take the lsb
+    chip->V[instr.X] = chip->V[instr.Y] >> 1;
 }
 
 // es.  0XF155 reg_dump(V1, &I)  - Stores from V0 to VX (including VX) in memory,
@@ -427,6 +432,8 @@ void iFX55(chip8_t *chip, instr_t instr) {
     assert(chip->I + sz <= 4096);
 
     memcpy(chip->memory + chip->I, chip->V, sz);
+    chip->I += sz; // CHIP-8 compliant
+
 }
 
 // es. 0XF065 reg_load(V0, &I) - Fills from V0 to VX (including VX) with values from memory,
@@ -438,6 +445,7 @@ void iFX65(chip8_t *chip, instr_t instr) {
     assert(chip->I + sz <= 4096);
 
     memcpy(chip->V, chip->memory + chip->I, sz);
+    chip->I += sz; // CHIP-8 compliant
 }
 
 
@@ -527,7 +535,7 @@ instr_t chip_fetch(const chip8_t *chip, uint16_t chip_addr) {
 void chip_exec(chip8_t *chip, instr_t instr) {
 
     // execution is halted by iFX0A, waiting for a key being pressed
-    if (chip->is_awaiting) // NOP
+    if (UNLIKELY(chip->is_awaiting)) // NOP
         return;
 
 #ifdef CHIP_DEBUG
