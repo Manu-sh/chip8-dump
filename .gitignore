@@ -1,6 +1,9 @@
 .idea/
 build/
 main
+CMakeCache.txt
+CMakeFiles/
+
 
 # Prerequisites
 *.d

@@ -11,4 +11,10 @@ cmake -B build
 make -j`nproc --all` -C build
 ```
 
+launch the emulator
+
+```bash
+./build/main /path/to/your/rom.ch8
+```
+
 ###### Copyright © 2025, [Manu-sh](https://github.com/Manu-sh), s3gmentationfault@gmail.com. Released under the [MIT license](LICENSE).
