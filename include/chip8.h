@@ -285,19 +285,21 @@ void iDXYN(chip8_t *chip, opcode_t instr) {
 #endif
             // questo fa il wrap around, tecnicamente è una roba di super-chip in chip8 originale viene clippato e basta se esce dallo schermo.
             uint16_t pixel_index = SC(
-            (y + sprite_h) % SCREEN_HEIGHT,
-            (x + sprite_w) % SCREEN_WIDTH
+        (y + sprite_h) % SCREEN_HEIGHT,
+        (x + sprite_w) % SCREEN_WIDTH
             );
 
             const uint8_t pixel_tmp = chip->screen[pixel_index];
             chip->screen[pixel_index] ^= pixel;
-            chip->VF |= pixel_tmp & pixel; // disegna in XOR qua c'è il carry chip->VF = chip->VF || (old_pixel == pixel); spenge il pixel se entrambi sono on
+            chip->VF |= pixel_tmp && pixel; // disegna in XOR qua c'è il carry chip->VF = chip->VF || (old_pixel == pixel); spenge il pixel se entrambi sono on
+            //chip->VF |= !!pixel_tmp & pixel;
         }
 #ifdef CHIP_DEBUG
         printf("%c", '\n');
 #endif
     }
 }
+
 
 // es. 0X7009 V0 += 0X9 - Adds NN to VX (carry flag is not changed)
 void i7XNN(chip8_t *chip, opcode_t instr) {
