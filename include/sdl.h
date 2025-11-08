@@ -6,7 +6,7 @@
 #include <SDL3/SDL_pixels.h>
 #include <SDL3/SDL_render.h>
 
-SDL_Palette * sdl_palette_new() {
+static SDL_Palette * sdl_palette_new() {
 
     SDL_Palette *palette = SDL_CreatePalette(256);
     SDL_Color colors[256];
@@ -18,7 +18,7 @@ SDL_Palette * sdl_palette_new() {
     return palette;
 }
 
-void sdl_palette_free(SDL_Palette *palette) {
+static void sdl_palette_free(SDL_Palette *palette) {
     SDL_DestroyPalette(palette);
 }
 

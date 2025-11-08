@@ -22,26 +22,25 @@
 #include <unistd.h>
 #include <signal.h>
 
-
-bool sdl_remap_key(SDL_Scancode keycode, uint8_t keypad[HKEY_LEN]) {
+bool sdl_remap_key(SDL_Scancode keycode, chip8_t *chip) {
 
     switch (keycode) {
-        case SDL_SCANCODE_KP_0: case SDL_SCANCODE_0: keypad[HKEY_0] = PRESS; return true;
-        case SDL_SCANCODE_KP_1: case SDL_SCANCODE_1: keypad[HKEY_1] = PRESS; return true;
-        case SDL_SCANCODE_KP_2: case SDL_SCANCODE_2: keypad[HKEY_2] = PRESS; return true;
-        case SDL_SCANCODE_KP_3: case SDL_SCANCODE_3: keypad[HKEY_3] = PRESS; return true;
-        case SDL_SCANCODE_KP_4: case SDL_SCANCODE_4: keypad[HKEY_4] = PRESS; return true;
-        case SDL_SCANCODE_KP_5: case SDL_SCANCODE_5: keypad[HKEY_5] = PRESS; return true;
-        case SDL_SCANCODE_KP_6: case SDL_SCANCODE_6: keypad[HKEY_6] = PRESS; return true;
-        case SDL_SCANCODE_KP_7: case SDL_SCANCODE_7: keypad[HKEY_7] = PRESS; return true;
-        case SDL_SCANCODE_KP_8: case SDL_SCANCODE_8: keypad[HKEY_8] = PRESS; return true;
-        case SDL_SCANCODE_KP_9: case SDL_SCANCODE_9: keypad[HKEY_9] = PRESS; return true;
-        case SDL_SCANCODE_A: keypad[HKEY_A] = PRESS; return true;
-        case SDL_SCANCODE_B: keypad[HKEY_B] = PRESS; return true;
-        case SDL_SCANCODE_C: keypad[HKEY_C] = PRESS; return true;
-        case SDL_SCANCODE_D: keypad[HKEY_D] = PRESS; return true;
-        case SDL_SCANCODE_E: keypad[HKEY_E] = PRESS; return true;
-        case SDL_SCANCODE_F: keypad[HKEY_F] = PRESS; return true;
+        case SDL_SCANCODE_KP_0: case SDL_SCANCODE_0: chip_press_key(chip, HKEY_0); return true;
+        case SDL_SCANCODE_KP_1: case SDL_SCANCODE_1: chip_press_key(chip, HKEY_1); return true;
+        case SDL_SCANCODE_KP_2: case SDL_SCANCODE_2: chip_press_key(chip, HKEY_2); return true;
+        case SDL_SCANCODE_KP_3: case SDL_SCANCODE_3: chip_press_key(chip, HKEY_3); return true;
+        case SDL_SCANCODE_KP_4: case SDL_SCANCODE_4: chip_press_key(chip, HKEY_4); return true;
+        case SDL_SCANCODE_KP_5: case SDL_SCANCODE_5: chip_press_key(chip, HKEY_5); return true;
+        case SDL_SCANCODE_KP_6: case SDL_SCANCODE_6: chip_press_key(chip, HKEY_6); return true;
+        case SDL_SCANCODE_KP_7: case SDL_SCANCODE_7: chip_press_key(chip, HKEY_7); return true;
+        case SDL_SCANCODE_KP_8: case SDL_SCANCODE_8: chip_press_key(chip, HKEY_8); return true;
+        case SDL_SCANCODE_KP_9: case SDL_SCANCODE_9: chip_press_key(chip, HKEY_9); return true;
+        case SDL_SCANCODE_A: chip_press_key(chip, HKEY_A); return true;
+        case SDL_SCANCODE_B: chip_press_key(chip, HKEY_B); return true;
+        case SDL_SCANCODE_C: chip_press_key(chip, HKEY_C); return true;
+        case SDL_SCANCODE_D: chip_press_key(chip, HKEY_D); return true;
+        case SDL_SCANCODE_E: chip_press_key(chip, HKEY_E); return true;
+        case SDL_SCANCODE_F: chip_press_key(chip, HKEY_F); return true;
         default: break;
     }
 
@@ -76,7 +75,7 @@ int main(int argc, char *argv[]) {
             if (event.type != SDL_EVENT_KEY_DOWN || event.key.repeat)
                 continue;
 
-            if (sdl_remap_key(event.key.scancode, chip->keypad)) {
+            if (sdl_remap_key(event.key.scancode, chip)) {
                 #ifdef CHIP_DEBUG
                     printf("some key pressed\n");
                 #endif

@@ -23,7 +23,7 @@ enum { REG_V0, REG_V1, REG_V2, REG_V3, REG_V4, REG_V5, REG_V6, REG_V7, REG_V8, R
 */
 
 typedef uint8_t keystate_t;
-enum { HKEY_0, HKEY_1, HKEY_2, HKEY_3, HKEY_4, HKEY_5, HKEY_6, HKEY_7, HKEY_8, HKEY_9, HKEY_A, HKEY_B, HKEY_C, HKEY_D, HKEY_E, HKEY_F, HKEY_LEN };
+typedef enum { HKEY_0, HKEY_1, HKEY_2, HKEY_3, HKEY_4, HKEY_5, HKEY_6, HKEY_7, HKEY_8, HKEY_9, HKEY_A, HKEY_B, HKEY_C, HKEY_D, HKEY_E, HKEY_F, HKEY_LEN } keycodes_t;
 
 enum { NOT_PRESS, PRESS };
 
@@ -73,6 +73,10 @@ typedef struct {
     };
 
     keystate_t keypad[HKEY_LEN];
+    struct {
+        bool is_awaiting; // iFX0A: when awaiting for keypress every instruction is halted
+        uint8_t await_dreg: 4; // in which data register store the awaited key (0, 0xf);
+    };
 
 } chip8_t;
 
@@ -90,6 +94,7 @@ chip8_t * chip_new() {
     self->prog_beg = __builtin_assume_aligned(self->memory + 0x200, sizeof(uint16_t));
     self->prog_end = self->prog_beg; // a default value
     self->PC       = 0x200;
+    self->I        = 0x200;
 
     if (!(self->stack = lifo_u16_new()))
         return free(self), NULL;
@@ -112,6 +117,7 @@ void chip_reset(chip8_t *self) {
     self->prog_beg = __builtin_assume_aligned(self->memory + 0x200, sizeof(uint16_t));
     self->prog_end = self->prog_beg; // a default value
     self->PC       = 0x200;
+    self->I        = 0x200;
 
     self->stack = lifo_u16_new();
 }
@@ -129,6 +135,23 @@ void chip_tick(chip8_t *self) {
     self->sound_timer -= !!self->sound_timer;
 }
 
+/*
+ A key press is awaited, and then stored in VX
+ (blocking operation, all instruction halted until next key event, delay and sound timers should continue processing).
+*/
+void chip_press_key(chip8_t *self, keycodes_t key_code) {
+
+    key_code &= 0xf; // same of key_code %= HKEY_LEN
+
+    if (LIKELY(!self->is_awaiting)) {
+        self->keypad[key_code] = PRESS;
+        return;
+    }
+
+    // store directly in the register and resume the status of machine
+    self->V[self->await_dreg] = key_code;
+    self->is_awaiting         = false;
+}
 
 bool chip_load_rom(chip8_t *chip, const char *fpath) {
 
@@ -160,25 +183,10 @@ bool chip_load_rom(chip8_t *chip, const char *fpath) {
     chip->prog_end = chip->prog_beg + rom_size; // set to: chip->memory + 0x200 + rom_size
     assert(chip->prog_end <= chip->memory + 4096);
 
-#if 0
-    // !! DO-NOT: swap the rom endianess! since contain raw bytes like sprites etc
-    //for (uint16_t *word = (uint16_t *)chip->prog_beg; word != (uint16_t *)chip->prog_end; ++word)
-    //    *word = be16toh(*word);
-#endif
-
+    // WARNING: !! DO-NOT: swap the rom endianess! since contain raw bytes like sprites etc. Not just instructions
     fclose(file);
     return true;
 }
-
-/*
-void dump_ram(const chip8_t *chip) {
-
-    for (const uint8_t *p = chip->memory + 0x200; p != chip->memory + 0xfff + 1; ++p)
-        printf( "%s", byte_dump(p, sizeof(uint8_t)) );
-
-    puts("");
-}
-*/
 
 // 0X00E0 disp_clear() - Clears the screen
 void i00E0(chip8_t *chip) {
@@ -499,6 +507,13 @@ void iEXA1(chip8_t *chip, opcode_t instr) {
 }
 
 
+// iFX0A = get_key()
+// A key press is awaited, and then stored in VX (blocking operation, all instruction halted until next key event, delay and sound timers should continue processing).
+void iFX0A(chip8_t *chip, opcode_t instr) {
+    chip->await_dreg  = instr.X;
+    chip->is_awaiting = true;
+}
+
 opcode_t chip_fetch(const chip8_t *chip, uint16_t chip_addr) {
     assert(chip_addr <= (4096 - sizeof(uint16_t))); // usually chip_addr is the program counter
     return (opcode_t) {
@@ -508,6 +523,10 @@ opcode_t chip_fetch(const chip8_t *chip, uint16_t chip_addr) {
 
 
 void chip_exec(chip8_t *chip, opcode_t instr) {
+
+    // execution is halted by iFX0A, waiting for a key being pressed
+    if (chip->is_awaiting) // NOP
+        return;
 
 #ifdef CHIP_DEBUG
     dump_instruction(instr);
@@ -642,11 +661,8 @@ void chip_exec(chip8_t *chip, opcode_t instr) {
                     chip->PC += sizeof(opcode_t);
                     return;
                 case 0x0A:
-                    printf("%#06X V%x = get_key() - A key press is awaited, and then stored in VX (blocking operation, all instruction halted until next key event, delay and sound timers should continue processing).\n",
-                       instr.data,
-                       instr.X
-                    );
-                    assert(0);
+                    iFX0A(chip, instr);
+                    chip->PC += sizeof(opcode_t);
                     return;
                 case 0x15:
                     iFX15(chip, instr);
