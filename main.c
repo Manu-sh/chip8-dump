@@ -9,7 +9,8 @@
 #include <font.h>
 #include <opcode.h>
 #include <dbg.h>
-#include <scale.h>
+#include <chronos.h>
+#include <sdl.h>
 
 #include <stdio.h>
 #include <stdbool.h>
@@ -20,31 +21,6 @@
 
 #include <unistd.h>
 #include <signal.h>
-
-#include <SDL3/SDL.h>
-#include <SDL3/SDL_main.h>
-#include <SDL3/SDL_pixels.h>
-#include <SDL3/SDL_render.h>
-#include <SDL3/SDL_keyboard.h>
-
-#include <chronos.h>
-
-SDL_Palette * sdl_palette_new() {
-
-    SDL_Palette *palette = SDL_CreatePalette(256);
-    SDL_Color colors[256];
-
-    memset(colors, 0x00, sizeof(colors)); // every other color than white is black
-    memset(colors + 255, 0xff, sizeof(colors[0])); // this is white
-
-    SDL_SetPaletteColors(palette, colors, 0, 256);
-
-    return palette;
-}
-
-void sdl_palette_free(SDL_Palette *palette) {
-    SDL_DestroyPalette(palette);
-}
 
 
 bool sdl_remap_key(SDL_Scancode keycode, uint8_t keypad[HKEY_LEN]) {
@@ -78,25 +54,7 @@ int main(int argc, char *argv[]) {
     printf("argv[1] = \"%s\"\n", argv[1]);
 
     SDL_Init(SDL_INIT_VIDEO);
-    SDL_Window *window = SDL_CreateWindow(
-        "chip8 emulator",
-        SCREEN_WIDTH  * SCALE,
-        SCREEN_HEIGHT * SCALE,
-        SDL_WINDOW_RESIZABLE
-    );
-
-    SDL_Renderer *renderer = SDL_CreateRenderer(window, NULL);
-    //SDL_SetRenderVSync(renderer, SDL_RENDERER_VSYNC_ADAPTIVE); // sync with display HZ
-    SDL_SetRenderScale(renderer, SCALE, SCALE);
-
-    SDL_Surface *surface = SDL_CreateSurface(
-        SCREEN_WIDTH,
-        SCREEN_HEIGHT,
-        SDL_PIXELFORMAT_INDEX8
-    );
-
-    SDL_Palette *palette = sdl_palette_new();
-    SDL_SetSurfacePalette(surface, palette);
+    sdl_t *sdl = sdl_new("chip8 emulator", SCREEN_WIDTH, SCREEN_HEIGHT, 10);
 
     assert(argc > 1);
 
@@ -110,7 +68,6 @@ int main(int argc, char *argv[]) {
     chronos_start(&timer60hz);
 
     while (1) {
-
         if (SDL_PollEvent(&event)) {
 
             if (event.type == SDL_EVENT_QUIT)
@@ -130,19 +87,8 @@ int main(int argc, char *argv[]) {
         //dbg("PC: %#04x ", chip->PC);
         chip_exec(chip, chip_fetch(chip, chip->PC));
 
-        // Copia il framebuffer dentro la surface
-        SDL_LockSurface(surface);
-        memcpy(surface->pixels, chip->screen, SCREEN_WIDTH * SCREEN_HEIGHT);
-        SDL_UnlockSurface(surface);
-
-        // Aggiorna la texture con il contenuto del framebuffer
-        SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
-        SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);
-
-        SDL_RenderClear(renderer);
-        SDL_RenderTexture(renderer, texture, NULL, NULL);
-        SDL_RenderPresent(renderer);
-        SDL_DestroyTexture(texture); // rilascia texture temporanea
+        sdl_sync_fb(sdl, chip->screen);
+        sdl_render(sdl);
 
 #ifdef CHIP_DEBUG
         printf("%s\n", byte_dump(chip->keypad, sizeof(chip->keypad)));
@@ -152,15 +98,11 @@ int main(int argc, char *argv[]) {
             chip_tick(chip);
             chronos_restart(&timer60hz);
         }
-
     }
 
 die:
     // Close window and OpenGL context
-    SDL_DestroySurface(surface);
-    sdl_palette_free(palette);
-    SDL_DestroyRenderer(renderer);
-    SDL_DestroyWindow(window);
+    sdl_free(sdl);
     SDL_Quit();
     chip_free(chip);
     return 0;

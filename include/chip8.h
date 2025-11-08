@@ -91,7 +91,9 @@ chip8_t * chip_new() {
     self->prog_end = self->prog_beg; // a default value
     self->PC       = 0x200;
 
-    self->stack = lifo_u16_new();
+    if (!(self->stack = lifo_u16_new()))
+        return free(self), NULL;
+
     //self->delay_timer = self->sound_timer = 0;
 
     return self;
