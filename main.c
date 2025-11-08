@@ -7,7 +7,7 @@
 #include <bit_utility.h>
 #include <chip8.h>
 #include <font.h>
-#include <opcode.h>
+#include <instruction.h>
 #include <dbg.h>
 #include <chronos.h>
 #include <sdl.h>

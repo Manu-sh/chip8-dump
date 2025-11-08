@@ -66,7 +66,7 @@ sdl_t * sdl_new(const char *title, uint16_t width, uint16_t height, uint8_t scal
 
     // (bool) Returns true on success or false on failure; call SDL_GetError() for more information.
     SDL_SetRenderScale(self->renderer, self->scale, self->scale);
-    //SDL_SetRenderVSync(renderer, SDL_RENDERER_VSYNC_ADAPTIVE); // sync with display HZ
+    //SDL_SetRenderVSync(self->renderer, SDL_RENDERER_VSYNC_ADAPTIVE); // sync with display HZ
 
     self->surface = SDL_CreateSurface(
         self->width,

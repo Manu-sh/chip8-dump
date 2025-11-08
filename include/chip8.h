@@ -3,7 +3,7 @@
 #include <stdalign.h>
 #include <screen.h>
 
-#include <opcode.h>
+#include <instruction.h>
 #include <dbg.h>
 #include <stdbool.h>
 #include <string.h>
@@ -194,23 +194,23 @@ void i00E0(chip8_t *chip) {
 }
 
 // es. 0X600C V0 = 0XC - Sets VX to NN
-void i6XNN(chip8_t *chip, opcode_t instr) {
+void i6XNN(chip8_t *chip, instr_t instr) {
     chip->V[instr.X] = instr.NN;
 }
 
 // 0XA22A I = 0X22A;
-void iANNN(chip8_t *chip, opcode_t instr) {
+void iANNN(chip8_t *chip, instr_t instr) {
     chip->I = instr.NNN;
 }
 
 //PC = V0 + %#03X - Jumps to the address NNN plus V0.
-void iBNNN(chip8_t *chip, opcode_t instr) {
+void iBNNN(chip8_t *chip, instr_t instr) {
     chip->PC = chip->V[instr.X] + instr.NNN;
 }
 
 // TODO: inizializzare il seed?
 // CXNN: Vx = rand() & NN - Sets VX to the result of a bitwise and operation on a random number (Typically: 0 to 255) and NN.
-void iCXNN(chip8_t *chip, opcode_t instr) {
+void iCXNN(chip8_t *chip, instr_t instr) {
     chip->V[instr.X] = rand() & instr.NN;
 }
 
@@ -251,7 +251,7 @@ void iCXNN(chip8_t *chip, opcode_t instr) {
  */
 
 // TODO: più check buffer overflow in particolare il bound sul chip->I e sugli altri data register
-void iDXYN(chip8_t *chip, opcode_t instr) {
+void iDXYN(chip8_t *chip, instr_t instr) {
 
     // legge n byte consecutivi da memoria a partire da I, ciascun byte rappresenta una riga di 8 pixel.
     const uint8_t *const beg_sprite = chip->memory + chip->I;
@@ -302,37 +302,37 @@ void iDXYN(chip8_t *chip, opcode_t instr) {
 
 
 // es. 0X7009 V0 += 0X9 - Adds NN to VX (carry flag is not changed)
-void i7XNN(chip8_t *chip, opcode_t instr) {
+void i7XNN(chip8_t *chip, instr_t instr) {
     chip->V[instr.X] += instr.NN;
 }
 
 //  es. 0X1228 goto 0X228; - Jumps to address NNN.
-void i1NNN(chip8_t *chip, opcode_t instr) {
+void i1NNN(chip8_t *chip, instr_t instr) {
     chip->PC = instr.NNN;
 }
 
 // es. 0X362B if (V6 == 0x2b) - Skips the next instruction if VX equals NN (usually the next instruction is a jump to skip a code block).
-void i3XNN(chip8_t *chip, opcode_t instr) {
-    chip->PC += (chip->V[instr.X] == instr.NN) << 1; // same of: (chip->V[instr.X] == instr.NN) ? sizeof(opcode_t) : 0
+void i3XNN(chip8_t *chip, instr_t instr) {
+    chip->PC += (chip->V[instr.X] == instr.NN) << 1; // same of: (chip->V[instr.X] == instr.NN) ? sizeof(instr_t) : 0
 }
 
 // es. 0X452A if (V5 != 0x2a) - Skips the next instruction if VX does not equal NN (usually the next instruction is a jump to skip a code block).
-void i4XNN(chip8_t *chip, opcode_t instr) {
+void i4XNN(chip8_t *chip, instr_t instr) {
     chip->PC += (chip->V[instr.X] != instr.NN) << 1;
 }
 
 // .. - Skips the next instruction if VX equals VY (usually the next instruction is a jump to skip a code block).
-void i5XY0(chip8_t *chip, opcode_t instr) {
+void i5XY0(chip8_t *chip, instr_t instr) {
     chip->PC += (chip->V[instr.X] == chip->V[instr.Y]) << 1;
 }
 
 // es. 0X9560 if (V5 != V6) - Skips the next instruction if VX does not equal VY. (Usually the next instruction is a jump to skip a code block).
-void i9XY0(chip8_t *chip, opcode_t instr) {
+void i9XY0(chip8_t *chip, instr_t instr) {
     chip->PC += (chip->V[instr.X] != chip->V[instr.Y]) << 1;
 }
 
 // es.  0X2812 *(0X812)() - Calls subroutine at NNN.
-void i2NNN(chip8_t *chip, opcode_t instr) {
+void i2NNN(chip8_t *chip, instr_t instr) {
 
     // 0x2NNN: Call subroutine at NNN
     // Store current address to return to on subroutine stack ("push" it on the stack)
@@ -342,7 +342,7 @@ void i2NNN(chip8_t *chip, opcode_t instr) {
     lifo_u16_push(chip->stack, chip->PC);
     chip->PC = instr.NNN;
 
-    //puts( byte_dump(chip->memory + chip->PC, sizeof(opcode_t)) );
+    //puts( byte_dump(chip->memory + chip->PC, sizeof(instr_t)) );
     //dbg("pc=%d\n", chip->PC);
     //dbg("pc=%u\n", instr.NNN);
     //dbg("pc=%u\n", chip->PC);
@@ -356,27 +356,27 @@ void i00EE(chip8_t *chip) {
 }
 
 // es. 0X8750 V7 = V5 - Sets VX to the value of VY.
-void i8XY0(chip8_t *chip, opcode_t instr) {
+void i8XY0(chip8_t *chip, instr_t instr) {
     chip->V[instr.X] = chip->V[instr.Y];
 }
 
 // es. 0X87B1 V7 |= Vb - Sets VX to VX or VY. (bitwise OR operation).
-void i8XY1(chip8_t *chip, opcode_t instr) {
+void i8XY1(chip8_t *chip, instr_t instr) {
     chip->V[instr.X] |= chip->V[instr.Y];
 }
 
 // es. 0X87B2 V7 &= Vb - Sets VX to VX and VY. (bitwise AND operation).
-void i8XY2(chip8_t *chip, opcode_t instr) {
+void i8XY2(chip8_t *chip, instr_t instr) {
     chip->V[instr.X] &= chip->V[instr.Y];
 }
 
 // es. 0X87B3 V7 ^= Vb - Sets VX to VX xor VY.
-void i8XY3(chip8_t *chip, opcode_t instr) {
+void i8XY3(chip8_t *chip, instr_t instr) {
     chip->V[instr.X] ^= chip->V[instr.Y];
 }
 
 // es. 0X8764 V7 += V6 - Adds VY to VX. VF is set to 1 when there's an overflow, and to 0 when there is not.
-void i8XY4(chip8_t *chip, opcode_t instr) {
+void i8XY4(chip8_t *chip, instr_t instr) {
 
     // dopotutto perché... perché non dovrei?! **rigira avidamente l'anello tra le mani**
     chip->VF = !!(__builtin_add_overflow(
@@ -387,7 +387,7 @@ void i8XY4(chip8_t *chip, opcode_t instr) {
 }
 
 // es. 0X8765 V7 -= V6 - VY is subtracted from VX. VF is set to 0 when there's an underflow, and 1 when there is not. (i.e. VF set to 1 if VX >= VY and 0 if not).
-void i8XY5(chip8_t *chip, opcode_t instr) {
+void i8XY5(chip8_t *chip, instr_t instr) {
 
     chip->VF = !!(__builtin_sub_overflow(
         chip->V[instr.X],
@@ -397,7 +397,7 @@ void i8XY5(chip8_t *chip, opcode_t instr) {
 }
 
 // Vx = Vy - Vx Sets VX to VY minus VX. VF is set to 0 when there's an underflow, and 1 when there is not. (i.e. VF set to 1 if VY >= VX).
-void i8XY7(chip8_t *chip, opcode_t instr) {
+void i8XY7(chip8_t *chip, instr_t instr) {
 
     chip->VF = !!(__builtin_sub_overflow(
         chip->V[instr.Y],
@@ -407,13 +407,13 @@ void i8XY7(chip8_t *chip, opcode_t instr) {
 }
 
 // es. 0X866E V6 <<= 1 - Shifts VX to the left by 1, then sets VF to 1 if the most significant bit of VX prior to that shift was set, or to 0 if it was unset.
-void i8XYE(chip8_t *chip, opcode_t instr) {
+void i8XYE(chip8_t *chip, instr_t instr) {
     chip->VF = access_bit(chip->V + instr.X, 0); // take the msb
     chip->V[instr.X] <<= 1;
 }
 
 // es. 0X8666 V6 >>= 1 - Shifts VX to the right by 1, then stores the least significant bit of VX prior to the shift into VF.
-void i8XY6(chip8_t *chip, opcode_t instr) {
+void i8XY6(chip8_t *chip, instr_t instr) {
     chip->VF = access_bit(chip->V + instr.X, sizeof(uint8_t) - 1); // take the lsb
     chip->V[instr.X] >>= 1;
 }
@@ -421,7 +421,7 @@ void i8XY6(chip8_t *chip, opcode_t instr) {
 // es.  0XF155 reg_dump(V1, &I)  - Stores from V0 to VX (including VX) in memory,
 // starting at address I. The offset from I is increased by 1 for each value written,
 // but I itself is left unmodified.
-void iFX55(chip8_t *chip, opcode_t instr) {
+void iFX55(chip8_t *chip, instr_t instr) {
 
     const size_t sz = instr.X + 1;
     assert(chip->I + sz <= 4096);
@@ -432,7 +432,7 @@ void iFX55(chip8_t *chip, opcode_t instr) {
 // es. 0XF065 reg_load(V0, &I) - Fills from V0 to VX (including VX) with values from memory,
 // starting at address I. The offset from I is increased by 1 for each value read,
 // but I itself is left unmodified.
-void iFX65(chip8_t *chip, opcode_t instr) {
+void iFX65(chip8_t *chip, instr_t instr) {
 
     const size_t sz = instr.X + 1;
     assert(chip->I + sz <= 4096);
@@ -448,7 +448,7 @@ void iFX65(chip8_t *chip, opcode_t instr) {
 // and places the hundreds digit in memory at location in I,
 // the tens digit at location I+1,
 // and the ones digit at location I+2.
-void iFX33(chip8_t *chip, opcode_t instr) {
+void iFX33(chip8_t *chip, instr_t instr) {
 
     assert(chip->I + 2 < 4096); // mem[I+2] writeable
 
@@ -461,7 +461,7 @@ void iFX33(chip8_t *chip, opcode_t instr) {
 // es. 0XFC29 I = sprite_addr[Vc] -
 //  Sets I to the location of the sprite for the character in VX(only consider the lowest nibble).
 //  Characters 0-F (in hexadecimal) are represented by a 4x5 font.
-void iFX29(chip8_t *chip, opcode_t instr) {
+void iFX29(chip8_t *chip, instr_t instr) {
     //chip->I = chip->V[instr.X] & 0x0f;
 
     //dbg("%d\n", N(chip->V[instr.X]));
@@ -471,31 +471,31 @@ void iFX29(chip8_t *chip, opcode_t instr) {
 }
 
 // es. 0XF015 delay_timer(V0) - Sets the delay timer to VX.
-void iFX15(chip8_t *chip, opcode_t instr) {
+void iFX15(chip8_t *chip, instr_t instr) {
     chip->delay_timer = chip->V[instr.X];
 }
 
 // es. 0XF007 V0 = get_delay() - Sets VX to the value of the delay timer.
-void iFX07(chip8_t *chip, opcode_t instr) {
+void iFX07(chip8_t *chip, instr_t instr) {
     chip->V[instr.X] = chip->delay_timer;
 }
 
 // es. 0XF118 sound_timer(V1) - Sets the sound timer to VX.
-void iFX18(chip8_t *chip, opcode_t instr) {
+void iFX18(chip8_t *chip, instr_t instr) {
     chip->sound_timer = chip->V[instr.X];
 }
 
 // I += V%x - Adds VX to I. VF is not affected.
-void iFX1E(chip8_t *chip, opcode_t instr) {
+void iFX1E(chip8_t *chip, instr_t instr) {
     chip->I += chip->V[instr.X];
 }
 
 // EX9E. if (key() == Vx) Skips the next instruction if the key stored
 // in VX(only consider the lowest nibble) is pressed
 // (usually the next instruction is a jump to skip a code block).
-void iEX9E(chip8_t *chip, opcode_t instr) {
+void iEX9E(chip8_t *chip, instr_t instr) {
     const uint8_t expected_key = N(chip->V[instr.X]);
-    chip->PC += (chip->keypad[ expected_key ] == PRESSED) << 1; // same of: (chip->keypad[ N(chip->V[instr.V]) ] == PRESSED) ? sizeof(opcode_t) : 0
+    chip->PC += (chip->keypad[ expected_key ] == PRESSED) << 1; // same of: (chip->keypad[ N(chip->V[instr.V]) ] == PRESSED) ? sizeof(instr_t) : 0
 
     chip->keypad[expected_key] = NOT_PRESSED;
 }
@@ -503,7 +503,7 @@ void iEX9E(chip8_t *chip, opcode_t instr) {
 // iEXA1 if (key() != V%x) - Skips the next instruction if the key stored
 // in VX(only consider the lowest nibble) is not pressed
 // (usually the next instruction is a jump to skip a code block).
-void iEXA1(chip8_t *chip, opcode_t instr) {
+void iEXA1(chip8_t *chip, instr_t instr) {
     const uint8_t expected_key = N(chip->V[instr.X]);
     chip->PC += (chip->keypad[ expected_key ] == NOT_PRESSED) << 1;
 }
@@ -511,20 +511,20 @@ void iEXA1(chip8_t *chip, opcode_t instr) {
 
 // iFX0A = get_key()
 // A key press is awaited, and then stored in VX (blocking operation, all instruction halted until next key event, delay and sound timers should continue processing).
-void iFX0A(chip8_t *chip, opcode_t instr) {
+void iFX0A(chip8_t *chip, instr_t instr) {
     chip->await_dreg  = instr.X;
     chip->is_awaiting = true;
 }
 
-opcode_t chip_fetch(const chip8_t *chip, uint16_t chip_addr) {
+instr_t chip_fetch(const chip8_t *chip, uint16_t chip_addr) {
     assert(chip_addr <= (4096 - sizeof(uint16_t))); // usually chip_addr is the program counter
-    return (opcode_t) {
+    return (instr_t) {
         .data = be16toh( *((uint16_t *)(chip->memory + chip_addr)) )
     };
 }
 
 
-void chip_exec(chip8_t *chip, opcode_t instr) {
+void chip_exec(chip8_t *chip, instr_t instr) {
 
     // execution is halted by iFX0A, waiting for a key being pressed
     if (chip->is_awaiting) // NOP
@@ -536,11 +536,11 @@ void chip_exec(chip8_t *chip, opcode_t instr) {
 
     if (instr.data == 0x00E0) {
         i00E0(chip);
-        chip->PC += sizeof(opcode_t);
+        chip->PC += sizeof(instr_t);
         return;
     } else if (instr.data == 0x00EE) {
         i00EE(chip);
-        chip->PC += sizeof(opcode_t);
+        chip->PC += sizeof(instr_t);
         return;
     }
 
@@ -560,23 +560,23 @@ void chip_exec(chip8_t *chip, opcode_t instr) {
             return;
         case 3:
             i3XNN(chip, instr);
-            chip->PC += sizeof(opcode_t);
+            chip->PC += sizeof(instr_t);
             return;
         case 4:
             i4XNN(chip, instr);
-            chip->PC += sizeof(opcode_t);
+            chip->PC += sizeof(instr_t);
             return;
         case 5:
             i5XY0(chip, instr);
-            chip->PC += sizeof(opcode_t);
+            chip->PC += sizeof(instr_t);
             return;
         case 6:
             i6XNN(chip, instr);
-            chip->PC += sizeof(opcode_t);
+            chip->PC += sizeof(instr_t);
             return;
         case 7:
             i7XNN(chip, instr);
-            chip->PC += sizeof(opcode_t);
+            chip->PC += sizeof(instr_t);
             return;
 
         case 8:
@@ -584,39 +584,39 @@ void chip_exec(chip8_t *chip, opcode_t instr) {
             switch (instr.N) {
                 case 0:
                     i8XY0(chip, instr);
-                    chip->PC += sizeof(opcode_t);
+                    chip->PC += sizeof(instr_t);
                     return;
                 case 1:
                     i8XY1(chip, instr);
-                    chip->PC += sizeof(opcode_t);
+                    chip->PC += sizeof(instr_t);
                     return;
                 case 2:
                     i8XY2(chip, instr);
-                    chip->PC += sizeof(opcode_t);
+                    chip->PC += sizeof(instr_t);
                     return;
                 case 3:
                     i8XY3(chip, instr);
-                    chip->PC += sizeof(opcode_t);
+                    chip->PC += sizeof(instr_t);
                     return;
                 case 4:
                     i8XY4(chip, instr);
-                    chip->PC += sizeof(opcode_t);
+                    chip->PC += sizeof(instr_t);
                     return;
                 case 5:
                     i8XY5(chip, instr);
-                    chip->PC += sizeof(opcode_t);
+                    chip->PC += sizeof(instr_t);
                     return;
                 case 6:
                     i8XY6(chip, instr);
-                    chip->PC += sizeof(opcode_t);
+                    chip->PC += sizeof(instr_t);
                     return;
                 case 7:
                     i8XY7(chip, instr);
-                    chip->PC += sizeof(opcode_t);
+                    chip->PC += sizeof(instr_t);
                     return;
                 case 0xE:
                     i8XYE(chip, instr);
-                    chip->PC += sizeof(opcode_t);
+                    chip->PC += sizeof(instr_t);
                     return;
 
                 default:
@@ -625,32 +625,32 @@ void chip_exec(chip8_t *chip, opcode_t instr) {
 
         case 9:
             i9XY0(chip, instr);
-            chip->PC += sizeof(opcode_t);
+            chip->PC += sizeof(instr_t);
             return;
         case 0xA:
             iANNN(chip, instr);
-            chip->PC += sizeof(opcode_t);
+            chip->PC += sizeof(instr_t);
             return;
         case 0xB:
             iBNNN(chip, instr);
             return;
         case 0xC:
             iCXNN(chip, instr);
-            chip->PC += sizeof(opcode_t);
+            chip->PC += sizeof(instr_t);
             return;
         case 0xD:
             iDXYN(chip, instr);
-            chip->PC += sizeof(opcode_t);
+            chip->PC += sizeof(instr_t);
             return;
         case 0xE:
             switch (NN(instr.data)) {
                 case 0x9E:
                     iEX9E(chip, instr);
-                    chip->PC += sizeof(opcode_t);
+                    chip->PC += sizeof(instr_t);
                     return;
                 case 0xA1:
                     iEXA1(chip, instr);
-                    chip->PC += sizeof(opcode_t);
+                    chip->PC += sizeof(instr_t);
                     return;
 
                 default:
@@ -660,39 +660,39 @@ void chip_exec(chip8_t *chip, opcode_t instr) {
             switch (instr.NN) {
                 case 0x07:
                     iFX07(chip, instr);
-                    chip->PC += sizeof(opcode_t);
+                    chip->PC += sizeof(instr_t);
                     return;
                 case 0x0A:
                     iFX0A(chip, instr);
-                    chip->PC += sizeof(opcode_t);
+                    chip->PC += sizeof(instr_t);
                     return;
                 case 0x15:
                     iFX15(chip, instr);
-                    chip->PC += sizeof(opcode_t);
+                    chip->PC += sizeof(instr_t);
                     return;
                 case 0x18:
                     iFX18(chip, instr);
-                    chip->PC += sizeof(opcode_t);
+                    chip->PC += sizeof(instr_t);
                     return;
                 case 0x1E:
                     iFX1E(chip, instr);
-                    chip->PC += sizeof(opcode_t);
+                    chip->PC += sizeof(instr_t);
                     return;
                 case 0x29:
                     iFX29(chip, instr);
-                    chip->PC += sizeof(opcode_t);
+                    chip->PC += sizeof(instr_t);
                     return;
                 case 0x33:
                     iFX33(chip, instr);
-                    chip->PC += sizeof(opcode_t);
+                    chip->PC += sizeof(instr_t);
                     return;
                 case 0x55:
                     iFX55(chip, instr);
-                    chip->PC += sizeof(opcode_t);
+                    chip->PC += sizeof(instr_t);
                     return;
                 case 0x65:
                     iFX65(chip, instr);
-                    chip->PC += sizeof(opcode_t);
+                    chip->PC += sizeof(instr_t);
                     return;
 
                 default:

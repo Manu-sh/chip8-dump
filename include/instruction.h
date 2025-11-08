@@ -57,4 +57,4 @@ typedef union __attribute__((__packed__)) {
         #endif
     };
 
-} opcode_t;
+} instr_t;
