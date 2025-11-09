@@ -35,6 +35,8 @@ typedef struct {
         alignas(uint16_t) uint8_t  memory[0xfff + 1]; // 4096 bytes of memory
     };
 
+    alignas(32) uint8_t screen[SCREEN_WIDTH * SCREEN_HEIGHT];
+
     union {
         uint8_t V[REG_LEN]; // 16 data registers
 
@@ -43,39 +45,29 @@ typedef struct {
         };
     };
 
+
     // 2**12 -> 4096 possible values from 0 to 2**12-1
-    union {
-        uint16_t I : 12; // address register (it can only be loaded with a 12-bit memory address due to the range of memory accessible to CHIP-8)
-        uint16_t   : 4;
-    };
+    uint16_t I  : 12; // address register (it can only be loaded with a 12-bit memory address due to the range of memory accessible to CHIP-8)
+    uint16_t    : 4;
 
-    lifo_u16 *stack;
-
-    // per la grafica probabilmente è meglio usare direttamente vector_bit[64 * 32 * 8]
-    // visto che si ragiona in termini di grafica monochrome a 2 bit
-
-    alignas(32) uint8_t screen[SCREEN_WIDTH * SCREEN_HEIGHT];
+    uint16_t PC : 12; // program counter
+    uint16_t    : 4;
 
     volatile uint8_t delay_timer;
     volatile uint8_t sound_timer;
 
-    // TODO: qualora uno volesse salvare lo stato sul disco vigerebbe il discorso endianess e i campi andrebbero dichiarati come in instruction.h
-    union {
-        uint16_t PC : 12; // program counter
-        uint16_t    : 4;
+    keystate_t keypad[HKEY_LEN];
+    struct {
+        bool is_awaiting;        // iFX0A: when awaiting for keypress every instruction is halted
+        uint8_t await_dreg  : 4; // in which data register store the awaited key (0, 0xf);
+        uint8_t             : 4;
     };
+
+    lifo_u16 *stack;
 
     // use(ful?) metadata
     struct {
-        uint8_t *prog_beg; // the program start: memory + 0x200
-        uint8_t *prog_end; // TODO: questo potrebbe non essere allineato
         uint16_t rom_size; // maximum value is 3584 bytes (the rom will be loaded at 0x200 address)
-    };
-
-    keystate_t keypad[HKEY_LEN];
-    struct {
-        bool is_awaiting; // iFX0A: when awaiting for keypress every instruction is halted
-        uint8_t await_dreg : 4; // in which data register store the awaited key (0, 0xf);
     };
 
 } chip8_t;
@@ -83,45 +75,23 @@ typedef struct {
 
 chip8_t * chip_new() {
 
-    chip8_t *self = calloc(1, sizeof(chip8_t));
-    if (!self) return NULL;
+    chip8_t *self;
 
-    // copy front sprites at the beginning of the memory
+    if (!(self = calloc(1, sizeof(chip8_t))))
+        return NULL;
+
+    // copy front sprites at the beginning of the memory (0-512)
     assert(sizeof(font_sprites) < sizeof(self->reserved));
     memcpy(self->reserved, font_sprites, sizeof(font_sprites));
 
-    //self->rom_size = 0;
-    self->prog_beg = __builtin_assume_aligned(self->memory + 0x200, sizeof(uint16_t));
-    self->prog_end = self->prog_beg; // a default value
-    self->PC       = 0x200;
-    self->I        = 0x200;
+    self->PC = 0x200;
+    self->I  = 0x200;
 
     if (!(self->stack = lifo_u16_new()))
         return free(self), NULL;
 
-    //self->delay_timer = self->sound_timer = 0;
-
     return self;
 }
-
-/*
-void chip_reset(chip8_t *self) {
-
-    lifo_u16_free(self->stack);
-    memset(self, 0, sizeof(chip8_t));
-
-    // copy front sprites at the beginning of the memory
-    assert(sizeof(font_sprites) < sizeof(self->reserved));
-    memcpy(self->reserved, font_sprites, sizeof(font_sprites));
-
-    self->prog_beg = __builtin_assume_aligned(self->memory + 0x200, sizeof(uint16_t));
-    self->prog_end = self->prog_beg; // a default value
-    self->PC       = 0x200;
-    self->I        = 0x200;
-
-    self->stack = lifo_u16_new();
-}
-*/
 
 
 void chip_free(chip8_t *self) {
@@ -170,18 +140,15 @@ bool chip_load_rom(chip8_t *chip, const char *fpath) {
         return false;
     }
 
-    //const size_t bytes_read = fread(chip->memory + 0x200, sizeof(uint8_t), rom_size, file);
-    const size_t bytes_read = fread(chip->prog_beg, sizeof(uint8_t), rom_size, file);
+    const size_t bytes_read = fread(chip->memory + 0x200, sizeof(uint8_t), rom_size, file);
     if (bytes_read != rom_size) {
         dbg("I/O error bytes read: \"%zu\" expected: \"%zu\" \n", bytes_read, rom_size);
         fclose(file);
         return false;
     }
 
-    printf("bytes read %zu\n", bytes_read);
-    chip->rom_size = rom_size;
-    chip->prog_end = chip->prog_beg + rom_size; // set to: chip->memory + 0x200 + rom_size
-    assert(chip->prog_end <= chip->memory + 4096);
+    //dbg("bytes read %zu\n", bytes_read);
+    assert(chip->memory + 0x200 + rom_size <= chip->memory + 4096);
 
     // WARNING: !! DO-NOT: swap the rom endianess! since contain raw bytes like sprites etc. Not just instructions
     fclose(file);
