@@ -83,8 +83,7 @@ chip8_t * chip_new() {
     assert(sizeof(font_sprites) < sizeof(self->reserved));
     memcpy(self->reserved, font_sprites, sizeof(font_sprites));
 
-    self->PC = 0x200;
-    self->I  = 0x200;
+    self->PC = self->I = 0x200;
 
     if (!(self->stack = lifo_u16_new()))
         return free(self), NULL;

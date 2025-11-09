@@ -66,7 +66,8 @@ int main(int argc, char *argv[]) {
             if (event.type == SDL_EVENT_QUIT)
                 goto die;
 
-            if (event.type != SDL_EVENT_KEY_DOWN || event.key.repeat)
+            //if (event.type != SDL_EVENT_KEY_DOWN || event.key.repeat)
+            if (event.type != SDL_EVENT_KEY_DOWN)
                 continue;
 
             if (sdl_remap_key(event.key.scancode, chip)) {
@@ -87,7 +88,6 @@ int main(int argc, char *argv[]) {
 #endif
 
         // TODO: fix display waiting OFF quirk
-        // TODO: fix input bug space invaders
         if (chronos_elapsed(&timer60hz) > 16) {
             chip_tick(chip);
             if (chip->sound_timer) sdl_buzzer_beep(buzzer);
