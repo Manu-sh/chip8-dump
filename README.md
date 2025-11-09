@@ -6,7 +6,6 @@ on archlinux:
 
 ```bash
 git clone https://github.com/Manu-sh/chip8
-git submodule update --init --recursive
 cmake -B build
 make -j`nproc --all` -C build
 ```

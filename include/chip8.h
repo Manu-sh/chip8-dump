@@ -10,10 +10,7 @@
 #include <assert.h>
 #include <file_utility.h>
 #include <font.h>
-
-
-typedef uint16_t u16;
-#include <inlined/lifo/lifo_u16.h>
+#include <stack.h>
 
 enum { REG_V0, REG_V1, REG_V2, REG_V3, REG_V4, REG_V5, REG_V6, REG_V7, REG_V8, REG_V9, REG_VA, REG_VB, REG_VC, REG_VD, REG_VE, REG_VF, REG_LEN };
 
@@ -62,7 +59,7 @@ typedef struct {
         uint8_t await_dreg : 4; // in which data register store the awaited key (0, 0xf);
     };
 
-    lifo_u16 *stack;
+    stack_t stack;
 
     // use(ful?) metadata
     struct {
@@ -85,15 +82,12 @@ chip8_t * chip_new() {
 
     self->PC = self->I = 0x200;
 
-    if (!(self->stack = lifo_u16_new()))
-        return free(self), NULL;
-
+    stack_init(&self->stack);
     return self;
 }
 
 
 void chip_free(chip8_t *self) {
-    lifo_u16_free(self->stack);
     free(self);
 }
 
@@ -304,14 +298,15 @@ void i2NNN(chip8_t *chip, instr_t instr) {
     //   and set program counter to subroutine address so that the next instruction
     //   is gotten from there.
 
-    lifo_u16_push(chip->stack, chip->PC);
+    stack_push(&chip->stack, chip->PC);
     chip->PC = instr.NNN;
 }
 
 // 0X00EE return; - Returns from a subroutine.
 void i00EE(chip8_t *chip) {
-    assert( !lifo_u16_isEmpty(chip->stack) );
-    chip->PC = lifo_u16_pop(chip->stack);
+    //assert( !lifo_u16_isEmpty(chip->stack) );
+    //chip->PC = lifo_u16_pop(chip->stack);
+    chip->PC = stack_pop(&chip->stack);
 }
 
 // es. 0X8750 V7 = V5 - Sets VX to the value of VY.
