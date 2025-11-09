@@ -3,6 +3,7 @@ build/
 main
 CMakeCache.txt
 CMakeFiles/
+cmake-build-debug/
 
 
 # Prerequisites

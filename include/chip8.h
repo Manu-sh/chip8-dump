@@ -58,9 +58,8 @@ typedef struct {
 
     keystate_t keypad[HKEY_LEN];
     struct {
-        bool is_awaiting;        // iFX0A: when awaiting for keypress every instruction is halted
-        uint8_t await_dreg  : 4; // in which data register store the awaited key (0, 0xf);
-        uint8_t             : 4;
+        bool is_awaiting;       // iFX0A: when awaiting for keypress every instruction is halted
+        uint8_t await_dreg : 4; // in which data register store the awaited key (0, 0xf);
     };
 
     lifo_u16 *stack;
@@ -441,12 +440,7 @@ void iFX33(chip8_t *chip, instr_t instr) {
 //  Sets I to the location of the sprite for the character in VX(only consider the lowest nibble).
 //  Characters 0-F (in hexadecimal) are represented by a 4x5 font.
 void iFX29(chip8_t *chip, instr_t instr) {
-    //chip->I = chip->V[instr.X] & 0x0f;
-
-    //dbg("%d\n", N(chip->V[instr.X]));
-    //dbg("%d\n", N(0xfc));
-
-    chip->I = N(chip->V[instr.X]) * sizeof(font_sprites[0]);
+    chip->I = N(chip->V[instr.X]) * sizeof(font_sprites[0]); // chip->I = chip->V[instr.X] & 0x0f;
 }
 
 // es. 0XF015 delay_timer(V0) - Sets the delay timer to VX.
@@ -687,6 +681,5 @@ void chip_exec(chip8_t *chip, instr_t instr) {
             return;
 
     }
-
 
 }
