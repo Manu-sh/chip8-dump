@@ -19,4 +19,17 @@ launch the emulator
 ./build/main /path/to/your/rom.ch8
 ```
 
+#### useful links
+- https://en.wikipedia.org/wiki/CHIP-8
+- https://github.com/mattmikolay/chip-8/wiki/Mastering-CHIP%E2%80%908 (best reference)
+- https://github.com/mattmikolay/chip-8/wiki/CHIP%E2%80%908-Technical-Reference
+- https://github.com/Timendus/chip8-test-suite (very useful test suite)
+- https://chip-8.vercel.app/ (an online emulator i used to test the behavior)
+- https://github.com/queso-fuego/chip8_emulator_c a gui with nice project
+- http://devernay.free.fr/hacks/chip8/C8TECH10.HTM
+
+#### other
+- https://project-awesome.org/tobiasvl/awesome-chip-8#testing
+- https://archive.org/details/bitsavers_rcacosmacCManual1978_6956559/page/n49/mode/2up
+
 ###### Copyright © 2025, [Manu-sh](https://github.com/Manu-sh), s3gmentationfault@gmail.com. Released under the [MIT license](LICENSE).
