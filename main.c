@@ -4,23 +4,16 @@
 
 //#define CHIP_DEBUG
 
-#include <bit_utility.h>
 #include <chip8.h>
-#include <font.h>
-#include <instruction.h>
-#include <dbg.h>
 #include <chronos.h>
 #include <sdl.h>
 
 #include <stdio.h>
 #include <stdbool.h>
-#include <stdint.h>
 #include <stdlib.h>
-#include <string.h>
 #include <assert.h>
+#include <sdl_buzzer.h>
 
-#include <unistd.h>
-#include <signal.h>
 
 bool sdl_remap_key(SDL_Scancode keycode, chip8_t *chip) {
 
@@ -52,8 +45,9 @@ int main(int argc, char *argv[]) {
     assert(argc > 1);
     printf("argv[1] = \"%s\"\n", argv[1]);
 
-    SDL_Init(SDL_INIT_VIDEO);
+    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
     sdl_t *sdl = sdl_new("chip8 emulator", SCREEN_WIDTH, SCREEN_HEIGHT, 10);
+    sdl_buzzer_t *buzzer = sdl_buzzer_new();
 
     assert(argc > 1);
 
@@ -85,7 +79,6 @@ int main(int argc, char *argv[]) {
 
         //dbg("PC: %#04x ", chip->PC);
         chip_exec(chip, chip_fetch(chip, chip->PC));
-
         sdl_sync_fb(sdl, chip->screen);
         sdl_render(sdl);
 
@@ -93,16 +86,22 @@ int main(int argc, char *argv[]) {
         printf("%s\n", byte_dump(chip->keypad, sizeof(chip->keypad)));
 #endif
 
+        // TODO: fix display waiting OFF quirk
         if (chronos_elapsed(&timer60hz) > 16) {
             chip_tick(chip);
+            if (chip->sound_timer) sdl_buzzer_beep(buzzer);
             chronos_restart(&timer60hz);
         }
+
+        SDL_DelayNS(.8f * 1.0e6); // 0.8ms
+        //SDL_DelayNS(16.6f * 1.0e6);
     }
 
 die:
     // Close window and OpenGL context
+    sdl_buzzer_free(buzzer);
     sdl_free(sdl);
     SDL_Quit();
     chip_free(chip);
-    return 0;
+    return EXIT_SUCCESS;
 }
