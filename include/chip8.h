@@ -222,10 +222,10 @@ void iDXYN(chip8_t *chip, instr_t instr) {
     const uint16_t y = chip->V[instr.Y]; // y-offset (row_offset)
 
     // instr.N * 8 -> bit
-    const uint8_t sprite_len        = end_sprite - beg_sprite;
-    const uint8_t sprite_bit_len    = sprite_len * 8;
-    const uint8_t sprite_bit_height = instr.N; // in bits
-    const uint8_t sprite_bit_width  = 8;       // in bits
+           const uint8_t sprite_len        = end_sprite - beg_sprite;
+           const uint8_t sprite_bit_len    = sprite_len * 8;
+           const uint8_t sprite_bit_height = instr.N; // in bits
+    static const uint8_t sprite_bit_width  = 8;       // in bits
 
     // Draws a sprite at coordinate (VX, VY) that has a width of 8 pixels and a height of N pixels.
     // The corresponding graphic on the screen will be eight pixels wide and N pixels high.
