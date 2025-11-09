@@ -371,26 +371,32 @@ void i8XY7(chip8_t *chip, instr_t instr) {
 
 // es. 0X866E V6 <<= 1 - Shifts VX to the left by 1, then sets VF to 1 if the most significant bit of VX prior to that shift was set, or to 0 if it was unset.
 void i8XYE(chip8_t *chip, instr_t instr) {
-    /*
+
     chip->VF = access_bit(chip->V + instr.X, 0); // take the msb
     chip->V[instr.X] <<= 1;
-     */
 
-    // CHIP-8 compliant
+
+    // CHIP-8 compliant:
+    // THIS BEHAVIOR MAKE Space Invaders [David Winter].ch8 not working properly
+    /*
     chip->VF = access_bit(chip->V + instr.Y, 0); // take the lsb
     chip->V[instr.X] = chip->V[instr.Y] << 1;
+    */
 }
 
 // es. 0X8666 V6 >>= 1 - Shifts VX to the right by 1, then stores the least significant bit of VX prior to the shift into VF.
 void i8XY6(chip8_t *chip, instr_t instr) {
-    /*
+
     chip->VF = access_bit(chip->V + instr.X, sizeof(uint8_t) - 1); // take the lsb
     chip->V[instr.X] >>= 1;
-     */
 
-    // CHIP-8 compliant
+
+    // CHIP-8 compliant:
+    // THIS BEHAVIOR MAKE Space Invaders [David Winter].ch8 not working properly
+    /*
     chip->VF = access_bit(chip->V + instr.Y, sizeof(uint8_t) - 1); // take the lsb
     chip->V[instr.X] = chip->V[instr.Y] >> 1;
+     */
 }
 
 // es.  0XF155 reg_dump(V1, &I)  - Stores from V0 to VX (including VX) in memory,
@@ -403,7 +409,6 @@ void iFX55(chip8_t *chip, instr_t instr) {
 
     memcpy(chip->memory + chip->I, chip->V, sz);
     chip->I += sz; // CHIP-8 compliant
-
 }
 
 // es. 0XF065 reg_load(V0, &I) - Fills from V0 to VX (including VX) with values from memory,

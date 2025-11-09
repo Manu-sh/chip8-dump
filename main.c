@@ -87,6 +87,7 @@ int main(int argc, char *argv[]) {
 #endif
 
         // TODO: fix display waiting OFF quirk
+        // TODO: fix input bug space invaders
         if (chronos_elapsed(&timer60hz) > 16) {
             chip_tick(chip);
             if (chip->sound_timer) sdl_buzzer_beep(buzzer);
