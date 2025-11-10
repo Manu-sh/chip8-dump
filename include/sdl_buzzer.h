@@ -11,7 +11,7 @@ typedef struct {
 
     struct {
         int current_sine_sample; // 0
-        float samples[512];
+        float samples[512 / 4];
         int minimum_audio; // freq float samples per second. Half of that.
     };
 } sdl_buzzer_t;
@@ -24,7 +24,7 @@ sdl_buzzer_t * sdl_buzzer_new() {
 
     self->spec.format   = SDL_AUDIO_F32;
     self->spec.channels = 2;
-    self->spec.freq     = 8000;
+    self->spec.freq     = 8000 / 4;
 
     self->minimum_audio = (self->spec.freq * sizeof(float)) / 2;
 
@@ -46,11 +46,11 @@ void sdl_buzzer_beep(sdl_buzzer_t *self) {
        to generate significantly _less_ audio ahead of time! */
     if (SDL_GetAudioStreamQueued(self->stream) < self->minimum_audio) {
 
-        /* this will feed 512 samples each frame until we get to our maximum. */
+        /* this will feed 512 / 4 samples each frame until we get to our maximum. */
 
-        /* generate a 440Hz pure tone */
+        /* generate a 220Hz pure tone */
         for (unsigned i = 0; i < SDL_arraysize(self->samples); i++) {
-            static const int freq = 440;
+            static const int freq = 220;
             const float phase = self->current_sine_sample * freq / (float)self->spec.freq;
             self->samples[i] = SDL_sinf(phase * 2 * SDL_PI_F);
             self->current_sine_sample++;
