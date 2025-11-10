@@ -6,7 +6,8 @@
 #include <SDL3/SDL_pixels.h>
 #include <SDL3/SDL_render.h>
 
-static SDL_Palette * sdl_palette_new() {
+// An 8 bit monochrome palette, this is required when the surface is 8 bit too (SDL_PIXELFORMAT_INDEX8)
+static SDL_Palette * sdl_palette_monochrome_new() {
 
     SDL_Palette *palette = SDL_CreatePalette(256);
     SDL_Color colors[256];
@@ -18,7 +19,7 @@ static SDL_Palette * sdl_palette_new() {
     return palette;
 }
 
-static void sdl_palette_free(SDL_Palette *palette) {
+static void sdl_palette_monochrome_free(SDL_Palette *palette) {
     SDL_DestroyPalette(palette);
 }
 
@@ -82,7 +83,7 @@ sdl_t * sdl_new(const char *title, uint16_t width, uint16_t height, uint8_t scal
     }
 
 
-    if (!(self->palette = sdl_palette_new())) {
+    if (!(self->palette = sdl_palette_monochrome_new())) {
         SDL_DestroySurface(self->surface);
         SDL_DestroyRenderer(self->renderer);
         SDL_DestroyWindow(self->window);
@@ -102,7 +103,7 @@ sdl_t * sdl_new(const char *title, uint16_t width, uint16_t height, uint8_t scal
     );
 
     if (!self->texture) {
-        sdl_palette_free(self->palette);
+        sdl_palette_monochrome_free(self->palette);
         SDL_DestroySurface(self->surface);
         SDL_DestroyRenderer(self->renderer);
         SDL_DestroyWindow(self->window);
@@ -142,7 +143,7 @@ void sdl_render(sdl_t *self) {
 
 void sdl_free(sdl_t *self) {
     SDL_DestroySurface(self->surface);
-    sdl_palette_free(self->palette);
+    sdl_palette_monochrome_free(self->palette);
     SDL_DestroyTexture(self->texture);
     SDL_DestroyRenderer(self->renderer);
     SDL_DestroyWindow(self->window);

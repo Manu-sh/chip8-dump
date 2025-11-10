@@ -11,29 +11,30 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <time.h>
 #include <assert.h>
 #include <sdl_buzzer.h>
 
 
-bool sdl_remap_key(SDL_Scancode keycode, chip8_t *chip, bool press) {
+bool sdl_remap_key(SDL_Scancode keycode, chip8_t *chip, keystate_t status) {
 
     switch (keycode) {
-        case SDL_SCANCODE_KP_0: case SDL_SCANCODE_0: chip_press_key(chip, HKEY_0, press); return true;
-        case SDL_SCANCODE_KP_1: case SDL_SCANCODE_1: chip_press_key(chip, HKEY_1, press); return true;
-        case SDL_SCANCODE_KP_2: case SDL_SCANCODE_2: chip_press_key(chip, HKEY_2, press); return true;
-        case SDL_SCANCODE_KP_3: case SDL_SCANCODE_3: chip_press_key(chip, HKEY_3, press); return true;
-        case SDL_SCANCODE_KP_4: case SDL_SCANCODE_4: chip_press_key(chip, HKEY_4, press); return true;
-        case SDL_SCANCODE_KP_5: case SDL_SCANCODE_5: chip_press_key(chip, HKEY_5, press); return true;
-        case SDL_SCANCODE_KP_6: case SDL_SCANCODE_6: chip_press_key(chip, HKEY_6, press); return true;
-        case SDL_SCANCODE_KP_7: case SDL_SCANCODE_7: chip_press_key(chip, HKEY_7, press); return true;
-        case SDL_SCANCODE_KP_8: case SDL_SCANCODE_8: chip_press_key(chip, HKEY_8, press); return true;
-        case SDL_SCANCODE_KP_9: case SDL_SCANCODE_9: chip_press_key(chip, HKEY_9, press); return true;
-        case SDL_SCANCODE_A: chip_press_key(chip, HKEY_A, press); return true;
-        case SDL_SCANCODE_B: chip_press_key(chip, HKEY_B, press); return true;
-        case SDL_SCANCODE_C: chip_press_key(chip, HKEY_C, press); return true;
-        case SDL_SCANCODE_D: chip_press_key(chip, HKEY_D, press); return true;
-        case SDL_SCANCODE_E: chip_press_key(chip, HKEY_E, press); return true;
-        case SDL_SCANCODE_F: chip_press_key(chip, HKEY_F, press); return true;
+        case SDL_SCANCODE_KP_0: case SDL_SCANCODE_0: chip_press_key(chip, HKEY_0, status); return true;
+        case SDL_SCANCODE_KP_1: case SDL_SCANCODE_1: chip_press_key(chip, HKEY_1, status); return true;
+        case SDL_SCANCODE_KP_2: case SDL_SCANCODE_2: chip_press_key(chip, HKEY_2, status); return true;
+        case SDL_SCANCODE_KP_3: case SDL_SCANCODE_3: chip_press_key(chip, HKEY_3, status); return true;
+        case SDL_SCANCODE_KP_4: case SDL_SCANCODE_4: chip_press_key(chip, HKEY_4, status); return true;
+        case SDL_SCANCODE_KP_5: case SDL_SCANCODE_5: chip_press_key(chip, HKEY_5, status); return true;
+        case SDL_SCANCODE_KP_6: case SDL_SCANCODE_6: chip_press_key(chip, HKEY_6, status); return true;
+        case SDL_SCANCODE_KP_7: case SDL_SCANCODE_7: chip_press_key(chip, HKEY_7, status); return true;
+        case SDL_SCANCODE_KP_8: case SDL_SCANCODE_8: chip_press_key(chip, HKEY_8, status); return true;
+        case SDL_SCANCODE_KP_9: case SDL_SCANCODE_9: chip_press_key(chip, HKEY_9, status); return true;
+        case SDL_SCANCODE_A: chip_press_key(chip, HKEY_A, status); return true;
+        case SDL_SCANCODE_B: chip_press_key(chip, HKEY_B, status); return true;
+        case SDL_SCANCODE_C: chip_press_key(chip, HKEY_C, status); return true;
+        case SDL_SCANCODE_D: chip_press_key(chip, HKEY_D, status); return true;
+        case SDL_SCANCODE_E: chip_press_key(chip, HKEY_E, status); return true;
+        case SDL_SCANCODE_F: chip_press_key(chip, HKEY_F, status); return true;
         default: break;
     }
 
@@ -45,6 +46,7 @@ int main(int argc, char *argv[]) {
     assert(argc > 1);
     printf("argv[1] = \"%s\"\n", argv[1]);
 
+    srand(time(0));
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
     sdl_t *sdl = sdl_new("chip8 emulator", SCREEN_WIDTH, SCREEN_HEIGHT, 10);
     sdl_buzzer_t *buzzer = sdl_buzzer_new();
@@ -61,16 +63,17 @@ int main(int argc, char *argv[]) {
     chronos_start(&timer60hz);
 
     while (1) {
+
         while (SDL_PollEvent(&event)) {
-			switch (event.type) {
+            switch (event.type) {
 				case SDL_EVENT_QUIT: goto die;
 				case SDL_EVENT_KEY_DOWN:
-					if (event.key.repeat) continue;
-					sdl_remap_key(event.key.scancode, chip, true);
+                    if (event.key.repeat) continue;
+					sdl_remap_key(event.key.scancode, chip, KEY_DOWN);
 					continue;
 				case SDL_EVENT_KEY_UP:
-					if (event.key.repeat) continue;
-					sdl_remap_key(event.key.scancode, chip, false);
+                    if (event.key.repeat) continue;
+					sdl_remap_key(event.key.scancode, chip, KEY_UP);
 					continue;
 			}
         }
@@ -85,7 +88,7 @@ int main(int argc, char *argv[]) {
 #endif
 
         // TODO: fix display waiting OFF quirk
-        if (chronos_elapsed(&timer60hz) > 16) {
+        if (chronos_elapsed(&timer60hz) > 16.6) {
             chip_tick(chip);
             if (chip->sound_timer) sdl_buzzer_beep(buzzer);
             chronos_restart(&timer60hz);

@@ -13,10 +13,12 @@ typedef struct {
     double start;
 } chronos_t;
 
+// start / reset a timer
 static double chronos_start(chronos_t *self) {
     return self->start = now_msec(&self->t);
 }
 
+// get elapsed milliseconds
 static double chronos_elapsed(chronos_t *self) {
     return now_msec(&self->t) - self->start;
 }

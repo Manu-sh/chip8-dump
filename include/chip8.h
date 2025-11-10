@@ -22,7 +22,7 @@ enum { REG_V0, REG_V1, REG_V2, REG_V3, REG_V4, REG_V5, REG_V6, REG_V7, REG_V8, R
 typedef uint8_t keystate_t;
 typedef enum { HKEY_0, HKEY_1, HKEY_2, HKEY_3, HKEY_4, HKEY_5, HKEY_6, HKEY_7, HKEY_8, HKEY_9, HKEY_A, HKEY_B, HKEY_C, HKEY_D, HKEY_E, HKEY_F, HKEY_LEN } keycodes_t;
 
-enum { NOT_PRESSED, PRESSED };
+enum { KEY_UP, KEY_DOWN };
 
 typedef struct {
 
@@ -101,16 +101,16 @@ void chip_tick(chip8_t *self) {
  A key press is awaited, and then stored in VX
  (blocking operation, all instruction halted until next key event, delay and sound timers should continue processing).
 */
-void chip_press_key(chip8_t *self, keycodes_t key_code, bool pressed) {
+void chip_press_key(chip8_t *self, keycodes_t key_code, keystate_t status) {
 
     key_code &= 0xf; // same of key_code %= HKEY_LEN
 
     if (LIKELY(!self->is_awaiting)) {
-        self->keypad[key_code] = pressed;
+        self->keypad[key_code] = status;
         return;
     }
 
-	if (!pressed) return;
+	if (status == KEY_UP) return;
 
     // store directly in the register and resume the status of machine
     self->V[self->await_dreg] = key_code;
@@ -144,7 +144,7 @@ bool chip_load_rom(chip8_t *chip, const char *fpath) {
     //dbg("bytes read %zu\n", bytes_read);
     assert(chip->memory + 0x200 + rom_size <= chip->memory + 4096);
 
-    // WARNING: !! DO-NOT: swap the rom endianess! since contain raw bytes like sprites etc. Not just instructions
+    // WARNING: !! DO-NOT: swap the rom endianness! since contain raw bytes like sprites etc. Not just instructions
     fclose(file);
     return true;
 }
@@ -164,7 +164,7 @@ void iANNN(chip8_t *chip, instr_t instr) {
     chip->I = instr.NNN;
 }
 
-//PC = V0 + %#03X - Jumps to the address NNN plus V0.
+// PC = V0 + %#03X - Jumps to the address NNN plus V0.
 void iBNNN(chip8_t *chip, instr_t instr) {
     chip->PC = chip->V0 + instr.NNN; // CHIP-8 compliant
 }
@@ -469,9 +469,9 @@ void iFX1E(chip8_t *chip, instr_t instr) {
 // (usually the next instruction is a jump to skip a code block).
 void iEX9E(chip8_t *chip, instr_t instr) {
     const uint8_t expected_key = N(chip->V[instr.X]);
-    chip->PC += (chip->keypad[ expected_key ] == PRESSED) << 1; // same of: (chip->keypad[ N(chip->V[instr.V]) ] == PRESSED) ? sizeof(instr_t) : 0
+    chip->PC += (chip->keypad[ expected_key ] == KEY_DOWN) << 1; // same of: (chip->keypad[ N(chip->V[instr.V]) ] == KEY_DOWN) ? sizeof(instr_t) : 0
 
-    // chip->keypad[expected_key] = NOT_PRESSED;
+    // chip->keypad[expected_key] = KEY_UP;
 }
 
 // iEXA1 if (key() != V%x) - Skips the next instruction if the key stored
@@ -479,7 +479,7 @@ void iEX9E(chip8_t *chip, instr_t instr) {
 // (usually the next instruction is a jump to skip a code block).
 void iEXA1(chip8_t *chip, instr_t instr) {
     const uint8_t expected_key = N(chip->V[instr.X]);
-    chip->PC += (chip->keypad[ expected_key ] == NOT_PRESSED) << 1;
+    chip->PC += (chip->keypad[ expected_key ] == KEY_UP) << 1;
 }
 
 

@@ -24,10 +24,6 @@ const char * byte_dump(const void *data, uint8_t size) {
     return buffer;
 }
 
-// TODO:
-//  0XA22A I = 0X22A
-//  ADDR = 0X22A
-//  I = be16toh( two_byte[ADDR - 0x200] )
 void dump_instruction(instr_t instr) {
 
     static size_t instruction_counter;
