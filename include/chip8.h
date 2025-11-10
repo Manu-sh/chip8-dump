@@ -110,7 +110,7 @@ void chip_press_key(chip8_t *self, keycodes_t key_code, keystate_t status) {
         return;
     }
 
-	if (status == KEY_UP) return;
+	if (UNLIKELY(status == KEY_UP)) return;
 
     // store directly in the register and resume the status of machine
     self->V[self->await_dreg] = key_code;
@@ -619,7 +619,7 @@ void chip_exec(chip8_t *chip, instr_t instr) {
             chip->PC += sizeof(instr_t);
             return;
         case 0xE:
-            switch (NN(instr.data)) {
+            switch (instr.NN) {
                 case 0x9E:
                     iEX9E(chip, instr);
                     chip->PC += sizeof(instr_t);
