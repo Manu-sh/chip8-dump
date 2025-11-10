@@ -24,6 +24,7 @@ launch the emulator
 - https://github.com/mattmikolay/chip-8/wiki/Mastering-CHIP%E2%80%908 (best reference)
 - https://github.com/mattmikolay/chip-8/wiki/CHIP%E2%80%908-Technical-Reference
 - https://github.com/Timendus/chip8-test-suite (very useful test suite)
+- https://github.com/corax89/chip8-test-rom (other useful tests)
 - https://chip-8.vercel.app/ (an online emulator i used to test the behavior)
 - https://github.com/queso-fuego/chip8_emulator_c a guy with nice project
 - http://devernay.free.fr/hacks/chip8/C8TECH10.HTM
