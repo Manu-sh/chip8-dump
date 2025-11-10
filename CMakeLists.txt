@@ -10,6 +10,10 @@ endif()
 set(INC_PATH  ${PROJECT_SOURCE_DIR}/include)
 set(SRC_PATH  ${PROJECT_SOURCE_DIR}/src)
 
+# equivalent of: strip --strip-all
+set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -s")
+add_link_options($<$<CONFIG:RELEASE>:-s>)
+
 add_executable(${PROJECT_NAME} main.c)
 
 find_package(SDL3 REQUIRED CONFIG REQUIRED COMPONENTS SDL3)
