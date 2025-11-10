@@ -110,6 +110,8 @@ void chip_press_key(chip8_t *self, keycodes_t key_code, bool pressed) {
         return;
     }
 
+	if (!pressed) return;
+
     // store directly in the register and resume the status of machine
     self->V[self->await_dreg] = key_code;
     self->is_awaiting         = false;
