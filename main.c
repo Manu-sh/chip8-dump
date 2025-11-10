@@ -61,21 +61,18 @@ int main(int argc, char *argv[]) {
     chronos_start(&timer60hz);
 
     while (1) {
-        if (SDL_PollEvent(&event)) {
-
-            if (event.type == SDL_EVENT_QUIT)
-                goto die;
-
-            //if (event.type != SDL_EVENT_KEY_DOWN || event.key.repeat)
-            if (event.key.repeat || (event.type != SDL_EVENT_KEY_DOWN && event.type != SDL_EVENT_KEY_UP))
-                continue;
-
-            if (sdl_remap_key(event.key.scancode, chip, event.type == SDL_EVENT_KEY_DOWN)) {
-                #ifdef CHIP_DEBUG
-                    printf("some key pressed\n");
-                #endif
-                //sleep(1);
-            }
+        while (SDL_PollEvent(&event)) {
+			switch (event.type) {
+				case SDL_EVENT_QUIT: goto die;
+				case SDL_EVENT_KEY_DOWN:
+					if (event.key.repeat) continue;
+					sdl_remap_key(event.key.scancode, chip, true);
+					continue;
+				case SDL_EVENT_KEY_UP:
+					if (event.key.repeat) continue;
+					sdl_remap_key(event.key.scancode, chip, false);
+					continue;
+			}
         }
 
         //dbg("PC: %#04x ", chip->PC);
