@@ -1,6 +1,6 @@
 #pragma ide diagnostic ignored "EndlessLoop"
 
-#define _DEFAULT_SOURCE
+#define _DEFAULT_SOURCE // required by endianness functions like be16toh()
 
 //#define CHIP_DEBUG
 
@@ -43,15 +43,17 @@ bool sdl_remap_key(SDL_Scancode keycode, chip8_t *chip, keystate_t status) {
 
 int main(int argc, char *argv[]) {
 
-    assert(argc > 1);
-    printf("argv[1] = \"%s\"\n", argv[1]);
+    if (argc < 2) {
+        fprintf(stderr, "usage: %s /path/your-rom.ch8\n", argv[0]);
+        return EXIT_FAILURE;
+    }
+
+    printf("loading rom: \"%s\"\n", argv[1]);
 
     srand(time(0));
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
     sdl_t *sdl = sdl_new("chip8 emulator", SCREEN_WIDTH, SCREEN_HEIGHT, 10);
     sdl_buzzer_t *buzzer = sdl_buzzer_new();
-
-    assert(argc > 1);
 
     chip8_t *chip = chip_new();
     if (!chip_load_rom(chip, argv[1]))
@@ -94,8 +96,8 @@ int main(int argc, char *argv[]) {
             chronos_restart(&timer60hz);
         }
 
-        SDL_DelayNS(.8f * 1.0e6); // 0.8ms
-        //SDL_DelayNS(16.6f * 1.0e6);
+        // SDL_DelayNS(.8f * 1.0e6); // 0.8ms
+        SDL_DelayNS(.35f * 1.0e6);
     }
 
 die:

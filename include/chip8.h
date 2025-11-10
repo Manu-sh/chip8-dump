@@ -28,8 +28,8 @@ typedef struct {
 
     /* CHIP-8 programs should be loaded into memory starting at address 0x200. The memory addresses 0x000 to 0x1FF are reserved for the CHIP-8 interpreter. */
     union {
-        alignas(uint16_t) uint8_t  reserved[0x200];   // 512 byte usually untouched by the rom
-        alignas(uint16_t) uint8_t  memory[0xfff + 1]; // 4096 bytes of memory
+        alignas(uint16_t) uint8_t reserved[0x200];   // 512 byte usually untouched by the rom
+        alignas(uint16_t) uint8_t memory[0xfff + 1]; // 4096 bytes of memory
     };
 
     alignas(32) uint8_t screen[SCREEN_WIDTH * SCREEN_HEIGHT];
@@ -169,7 +169,6 @@ void iBNNN(chip8_t *chip, instr_t instr) {
     chip->PC = chip->V0 + instr.NNN; // CHIP-8 compliant
 }
 
-// TODO: inizializzare il seed?
 // CXNN: Vx = rand() & NN - Sets VX to the result of a bitwise and operation on a random number (Typically: 0 to 255) and NN.
 void iCXNN(chip8_t *chip, instr_t instr) {
     chip->V[instr.X] = rand() & instr.NN;
@@ -229,6 +228,8 @@ void iDXYN(chip8_t *chip, instr_t instr) {
            const uint8_t sprite_bit_height = instr.N; // in bits
     static const uint8_t sprite_bit_width  = 8;       // in bits
 
+    (void)sprite_bit_len; // suppress -Wunused-variable warn
+
     // Draws a sprite at coordinate (VX, VY) that has a width of 8 pixels and a height of N pixels.
     // The corresponding graphic on the screen will be eight pixels wide and N pixels high.
 
@@ -239,6 +240,7 @@ void iDXYN(chip8_t *chip, instr_t instr) {
         for (uint8_t sprite_w = 0; sprite_w < sprite_bit_width; ++sprite_w) {
 
             const uint8_t sprite_bit_idx = sprite_h * sprite_bit_width + sprite_w; // a bit matrix in row-major-order
+            assert(sprite_bit_idx < sprite_bit_len);
             const uint8_t pixel = access_bit(beg_sprite, sprite_bit_idx) ? 0xff : 0x00;
 
 #ifdef CHIP_DEBUG
