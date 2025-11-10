@@ -23,7 +23,6 @@ target_compile_options(${PROJECT_NAME}
 		-funswitch-loops -ftree-vectorize -fivopts -fmodulo-sched -flto
 
 		-Wall -Wextra -Wno-unused-function -pedantic -pipe
-		-Wno-implicit-function-declaration
 		-ftrapv -fstack-protector-all -fstack-protector-strong
 		-fno-strict-aliasing
 		-DNDebug
