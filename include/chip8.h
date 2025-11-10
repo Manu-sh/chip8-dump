@@ -101,12 +101,12 @@ void chip_tick(chip8_t *self) {
  A key press is awaited, and then stored in VX
  (blocking operation, all instruction halted until next key event, delay and sound timers should continue processing).
 */
-void chip_press_key(chip8_t *self, keycodes_t key_code) {
+void chip_press_key(chip8_t *self, keycodes_t key_code, bool pressed) {
 
     key_code &= 0xf; // same of key_code %= HKEY_LEN
 
     if (LIKELY(!self->is_awaiting)) {
-        self->keypad[key_code] = PRESSED;
+        self->keypad[key_code] = pressed ? PRESSED : NOT_PRESSED;
         return;
     }
 
@@ -469,7 +469,7 @@ void iEX9E(chip8_t *chip, instr_t instr) {
     const uint8_t expected_key = N(chip->V[instr.X]);
     chip->PC += (chip->keypad[ expected_key ] == PRESSED) << 1; // same of: (chip->keypad[ N(chip->V[instr.V]) ] == PRESSED) ? sizeof(instr_t) : 0
 
-    chip->keypad[expected_key] = NOT_PRESSED;
+    //chip->keypad[expected_key] = NOT_PRESSED;
 }
 
 // iEXA1 if (key() != V%x) - Skips the next instruction if the key stored
