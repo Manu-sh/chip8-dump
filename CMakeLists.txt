@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.17)
-project(main C)
+project(chip8 C)
 set(CMAKE_C_STANDARD 11)
 
 if(NOT CMAKE_BUILD_TYPE)
