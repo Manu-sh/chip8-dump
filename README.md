@@ -16,7 +16,7 @@ make -j`nproc --all` -C build
 launch the emulator
 
 ```bash
-./build/main /path/to/your/rom.ch8
+./build/chip8 /path/to/your/rom.ch8
 ```
 
 #### useful links
